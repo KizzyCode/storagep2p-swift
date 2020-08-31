@@ -15,7 +15,7 @@ public struct Config {
     /// The fuzz iterations per thread until a validation is performed
     static let fuzzIterations = 67
     /// The amount of fuzzing rounds (i.e. the amount of `fuzzIterations * threadCount -> finish -> verify` rounds)
-    static let fuzzRounds = 1
+    static let fuzzRounds = 3
 }
 
 
@@ -101,5 +101,3 @@ func fuzz() {
 // -- MARK: Main block
 
 fuzz()
-print("Press enter to quit... ", terminator: "")
-_ = readLine()
