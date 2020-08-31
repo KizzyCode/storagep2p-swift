@@ -1,4 +1,4 @@
-// swift-tools-version:5.2
+// swift-tools-version:5.1
 
 import PackageDescription
 
@@ -14,11 +14,9 @@ let package = Package(
     ],
     dependencies: [
         .package(
-            name: "PersistentState",
             url: "https://github.com/KizzyCode/persistentstate-swift",
             .branch("master")),
         .package(
-            name: "Asn1Der",
             url: "https://github.com/KizzyCode/asn1der-swift",
             .branch("master"))
     ],
