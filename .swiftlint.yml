@@ -1,0 +1,13 @@
+excluded:
+ - Tests/*/XCTestManifests.swift
+ - .build
+ - .swiftpm
+
+switch_case_alignment:
+    indented_cases: true
+
+disabled_rules:
+ - force_cast
+ - large_tuple
+ - vertical_whitespace
+ - trailing_whitespace
