@@ -19,7 +19,7 @@ public struct Config {
 }
 
 
-// Implement a randomness for bools
+// Implement a `random` function for bools
 public extension Bool {
     /// Creates a random boolean with a `probability` for `true` where `probability` ranges from `0` to `1`
     static func random(probability: Double) -> Self {
