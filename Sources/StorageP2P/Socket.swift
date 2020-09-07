@@ -36,7 +36,7 @@ public class Socket {
         try self.storage.list()
             .compactMap({ try? MessageHeader(derUrlsafeEncoded: $0) })
             .filter({ $0.receiver == local })
-        	.map({ ConnectionID(local: $0.receiver, remote: $0.sender) })
+            .map({ ConnectionID(local: $0.receiver, remote: $0.sender) })
             .forEach({ ids.insert($0) })
         return ids
     }

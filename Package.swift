@@ -25,8 +25,8 @@ let package = Package(
             name: "StorageP2P",
             dependencies: ["PersistentState", "Asn1Der"]),
         .target(
-        	name: "FuzzStorageP2P",
-        	dependencies: ["StorageP2P", "PersistentState"]),
+            name: "FuzzStorageP2P",
+            dependencies: ["StorageP2P", "PersistentState"]),
         .testTarget(
             name: "StorageP2PTests",
             dependencies: ["StorageP2P"])
