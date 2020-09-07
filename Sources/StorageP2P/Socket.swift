@@ -3,35 +3,6 @@ import PersistentState
 import Asn1Der
 
 
-/// The storage to exchange the messages
-public protocol Storage {
-    /// Lists all entries in the storage
-    ///
-    ///  - Returns: The names of the stored entries
-    ///  - Throws: An exception if the listing fails
-    func list() throws -> [String]
-    /// Reads an entry
-    ///
-    ///  - Parameter name: The name of the entry to read
-    ///  - Returns: The contents of the entry
-    ///  - Throws: An exception if the entry does not exist or cannot be read
-    func read<S: StringProtocol>(name: S) throws -> Data
-    /// Atomically creates/replaces an entry
-    ///
-    ///  - Parameters:
-    ///     - name: The name of the entry to create. The name is not longer than 100 bytes and contains only characters
-    ///       from the Base64Urlsafe character set (without `=`).
-    ///     - data: The entry data
-    ///  - Throws: If the entry cannot be written
-    func write<S: StringProtocol>(name: S, data: Data) throws
-    /// Deletes an entry if it exists
-    ///
-    ///  - Parameter name: The name of the entry to delete
-    ///  - Throws: If the entry exists but cannot be deleted (it is *not* an error if the entry does not exist)
-    func delete<S: StringProtocol>(name: S) throws
-}
-
-
 /// A StorageP2P socket
 public class Socket {
     /// The storage key for the state object
