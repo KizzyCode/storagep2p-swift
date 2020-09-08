@@ -32,12 +32,30 @@ public class Socket {
     ///  - Throws: If an entry is invalid or if a local or remote I/O-error occurred
     public func list(local: UUID) throws -> Set<ConnectionID> {
         // List the locally known connections and add all new incoming connections
-        var ids = Set(state.dict.keys)
+        var ids = Set(self.state.dict.keys)
         try self.storage.list()
             .compactMap({ try? MessageHeader(derUrlsafeEncoded: $0) })
             .filter({ $0.receiver == local })
             .map({ ConnectionID(local: $0.receiver, remote: $0.sender) })
             .forEach({ ids.insert($0) })
+        return ids
+    }
+    /// Lists the UUIDs of all clients that participate in at least one connection
+    ///
+    ///  - Returns: All client UUIDs that participate in at least one connection
+    ///  - Throws: If an entry is invalid or if a local or remote I/O-error occurred
+    public func list() throws -> Set<UUID> {
+        var ids = Set<UUID>()
+        self.state.dict.keys.forEach({
+            ids.insert($0.local)
+            ids.insert($0.remote)
+        })
+        try self.storage.list()
+            .compactMap({ try? MessageHeader(derUrlsafeEncoded: $0) })
+            .forEach({
+            	ids.insert($0.sender)
+            	ids.insert($0.receiver)
+        	})
         return ids
     }
     
