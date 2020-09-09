@@ -24,13 +24,12 @@ public class Socket {
         self.storage = storage
     }
     
-    /// Lists all existing connections `local <-> *` that have at least one message sent/received and returns the
-    /// connection IDs
+    /// Discovers all existing connections `local <-> *` that have at least one message sent/received
     ///
     ///  - Parameter local: The UUID of the local connection endpoint
     ///  - Returns: All connections between `local <-> *`
     ///  - Throws: If an entry is invalid or if a local or remote I/O-error occurred
-    public func list(local: UUID) throws -> Set<ConnectionID> {
+    public func discover(local: UUID) throws -> Set<ConnectionID> {
         // List the locally known connections and add all new incoming connections
         var ids = Set(self.state.dict.keys)
         try self.storage.list()
@@ -40,11 +39,11 @@ public class Socket {
             .forEach({ ids.insert($0) })
         return ids
     }
-    /// Lists the UUIDs of all clients that participate in at least one connection
+    /// Discovers all UUIDs that participate in at least one connection
     ///
     ///  - Returns: All client UUIDs that participate in at least one connection
     ///  - Throws: If an entry is invalid or if a local or remote I/O-error occurred
-    public func list() throws -> Set<UUID> {
+    public func discover() throws -> Set<UUID> {
         var ids = Set<UUID>()
         self.state.dict.keys.forEach({
             ids.insert($0.local)
