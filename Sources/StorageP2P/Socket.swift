@@ -26,6 +26,8 @@ public class Socket {
     
     /// Discovers all existing connections `local <-> *` that have at least one message sent/received
     ///
+    ///  - Idempotency: This function is read-only and does not modify any state.
+    ///
     ///  - Parameter local: The UUID of the local connection endpoint
     ///  - Returns: All connections between `local <-> *`
     ///  - Throws: If an entry is invalid or if a local or remote I/O-error occurred
@@ -40,6 +42,8 @@ public class Socket {
         return ids
     }
     /// Discovers all UUIDs that participate in at least one connection
+    ///
+    ///  - Idempotency: This function is read-only and does not modify any state.
     ///
     ///  - Returns: All client UUIDs that participate in at least one connection
     ///  - Throws: If an entry is invalid or if a local or remote I/O-error occurred
