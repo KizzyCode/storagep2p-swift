@@ -7,6 +7,13 @@ public struct Discovery {
     /// The storage used to exchange messages
     public let storage: Storage
     
+    /// Creates a new instance that scans a specific storage
+    ///
+    ///  - Parameter storage: The storage used to exchange messages
+    public init(storage: Storage) {
+        self.storage = storage
+    }
+    
     /// Scans all entries for pending messages sent to a specific endpoint
     ///
     ///  - Parameter local: The address of the local endpoint
