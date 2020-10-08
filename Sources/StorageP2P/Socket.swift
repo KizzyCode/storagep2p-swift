@@ -4,38 +4,30 @@ import Asn1Der
 
 /// A persistent state object
 public protocol State {
-    /// Gets the current state
-    ///
-    ///  - Returns: The current state object
-    func get() -> [ConnectionID: StateObject]
-    /// Sets the current state
-    ///
-    ///  - Parameter value: The state to set
-    func set(_ value: [ConnectionID: StateObject])
+    /// The state object
+    var rawDict: [ConnectionID: StateObject] { get set }
 }
 internal extension State {
-    /// Accesses the underlying state
-    ///
-    ///  - Parameter access: The accessor for the underlying state
-    ///  - Returns: The result of `access`
-    func callAsFunction<R>(_ access: (inout [ConnectionID: StateObject]) throws -> R) rethrows -> R {
-        var value = self.get()
-        defer { self.set(value) }
-        return try access(&value)
-    }
-}
-internal extension Dictionary {
+    /// The state dictionary keys
+    var keys: Dictionary<ConnectionID, StateObject>.Keys { self.rawDict.keys }
+    
     /// Gets the current value or inserts a new value and returns it
     ///
     ///  - Parameters:
     ///     - key: The key
     ///     - value: The value
     ///  - Returns: The value
-    mutating func getOrInsert(key: Key, default: Value) -> Value {
-        if self[key] == nil {
-            self[key] = `default`
+    mutating func getOrInsert(key: ConnectionID, default: StateObject) -> StateObject {
+        if self.rawDict[key] == nil {
+            self.rawDict[key] = `default`
         }
-        return self[key]!
+        return self.rawDict[key]!
+    }
+    
+    /// Gets or sets a value
+    subscript(_ key: ConnectionID) -> StateObject? {
+        get { self.rawDict[key] }
+        set { self.rawDict[key] = newValue }
     }
 }
 
@@ -43,7 +35,7 @@ internal extension Dictionary {
 /// A StorageP2P socket
 public class Socket {
     /// The persistent state
-    private let state: State
+    private var state: State
     /// The storage to use to exchange the messages
     private let storage: Storage
     
@@ -67,7 +59,7 @@ public class Socket {
     ///  - Throws: If an entry is invalid or if a local or remote I/O-error occurred
     public func discover(local: UUID) throws -> Set<ConnectionID> {
         // List the locally known connections and add all new incoming connections
-        var ids = Set(self.state.get().keys)
+        var ids = Set(self.state.keys)
         try self.storage.list()
             .compactMap({ try? MessageHeader(derEncoded: $0) })
             .filter({ $0.receiver == local })
@@ -83,7 +75,7 @@ public class Socket {
     ///  - Throws: If an entry is invalid or if a local or remote I/O-error occurred
     public func discover() throws -> Set<UUID> {
         var ids = Set<UUID>()
-        self.state.get().keys.forEach({
+        self.state.keys.forEach({
             ids.insert($0.local)
             ids.insert($0.remote)
         })
@@ -107,7 +99,7 @@ public class Socket {
     ///  - Throws: If an entry is invalid or if a local or remote I/O-error occurred
     public func peek(conn: ConnectionID, nth: Int = 0) throws -> Data? {
         // Create the header of the nth expected message
-        let state = self.state({ $0.getOrInsert(key: conn, default: StateObject()) })
+        let state = self.state.getOrInsert(key: conn, default: StateObject())
         let header = MessageHeader(sender: conn.remote, receiver: conn.local, counter: state.counterRX + UInt64(nth))
         
         // Receive the message if it exists
@@ -128,16 +120,14 @@ public class Socket {
     ///     - message: The message to send
     ///  - Throws: If a local or remote I/O-error occurred
     public func send(conn: ConnectionID, message: Data) throws {
-        try self.state({ dict in
-            // Get the state
-            var state = dict.getOrInsert(key: conn, default: StateObject())
-            defer { dict[conn] = state }
-            
-            // Write the message
-            let header = MessageHeader(sender: conn.local, receiver: conn.remote, counter: state.counterTX)
-            try self.storage.write(name: header.derEncoded(), data: message)
-            state.counterTX += 1
-        })
+        // Get the state
+        var state = self.state.getOrInsert(key: conn, default: StateObject())
+        defer { self.state[conn] = state }
+        
+        // Write the message
+        let header = MessageHeader(sender: conn.local, receiver: conn.remote, counter: state.counterTX)
+        try self.storage.write(name: header.derEncoded(), data: message)
+        state.counterTX += 1
     }
     
     /// Checks whether there are incoming messages available on the given connection
@@ -149,7 +139,7 @@ public class Socket {
     ///  - Throws: If an entry is invalid or if a local or remote I/O-error occurred
     public func canReceive(conn: ConnectionID) throws -> Bool {
         // Create the header of the next expected message and check if it exists
-        let state = self.state({ $0.getOrInsert(key: conn, default: StateObject()) })
+        let state = self.state.getOrInsert(key: conn, default: StateObject())
         let header = MessageHeader(sender: conn.remote, receiver: conn.local, counter: state.counterRX)
         return try self.storage.list().contains(header.derEncoded())
     }
@@ -168,16 +158,15 @@ public class Socket {
     public func receive(conn: ConnectionID) throws -> Data {
         // Read next message
         var message: Data!
-        try self.state({ dict in
-            // Get the state
-            var state = dict.getOrInsert(key: conn, default: StateObject())
-            defer { dict[conn] = state }
-            
-            // Write the message
-            let header = MessageHeader(sender: conn.remote, receiver: conn.local, counter: state.counterRX)
-            message = try self.storage.read(name: header.derEncoded())
-            state.counterRX += 1
-        })
+        
+        // Get the state
+        var state = self.state.getOrInsert(key: conn, default: StateObject())
+        defer { self.state[conn] = state }
+        
+        // Write the message
+        let header = MessageHeader(sender: conn.remote, receiver: conn.local, counter: state.counterRX)
+        message = try self.storage.read(name: header.derEncoded())
+        state.counterRX += 1
         
         // Perform an opportunistic garbage collection
         try? self.gc(conn: conn)
@@ -192,7 +181,7 @@ public class Socket {
     ///  - Throws: If an entry is invalid or if a local or remote I/O-error occurred
     public func gc(conn: ConnectionID) throws {
         // Capture state and delete all messages `remote -> local` where `message.counter < state.counterRX`
-        let state = self.state({ $0.getOrInsert(key: conn, default: StateObject()) })
+        let state = self.state.getOrInsert(key: conn, default: StateObject())
         try self.storage.list()
             .compactMap({ try? MessageHeader(derEncoded: $0) })
             .filter({ $0.sender == conn.remote && $0.receiver == conn.local })
@@ -224,6 +213,6 @@ public class Socket {
         
         // Delete all messages and the associated state
         try headers.forEach({ try self.storage.delete(name: $0.derEncoded()) })
-        self.state({ $0[conn] = nil })
+        self.state[conn] = nil
     }
 }

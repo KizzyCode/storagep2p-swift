@@ -12,20 +12,12 @@ public enum StorageError: Error {
 
 
 /// A `PersistentState.Storage` implementation
-public class StateImpl {
+public class StateImpl: State {
     /// The state entries
-    private var entries: [ConnectionID: StateObject] = [:]
+    public var rawDict: [ConnectionID: StateObject] = [:]
     
     /// Creates a new `StateImpl` instane
     public init() {}
-}
-extension StateImpl: State {
-    public func get() -> [ConnectionID: StateObject] {
-        self.entries
-    }
-    public func set(_ value: [ConnectionID: StateObject]) {
-        self.entries = value
-    }
 }
 
 
