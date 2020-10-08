@@ -88,9 +88,9 @@ public struct ConnectionID: Hashable, Codable {
 /// A state object
 public struct StateObject: Codable {
     /// The amount of messages received `remote->local`
-    internal var counterRX: UInt64
+    internal(set) public var counterRX: UInt64
     /// The amount of messages sent `local->remote`
-    internal var counterTX: UInt64
+    internal(set) public var counterTX: UInt64
     
     /// Creates a new connection ID
     ///
