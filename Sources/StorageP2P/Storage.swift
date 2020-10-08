@@ -1,7 +1,20 @@
 import Foundation
 
 
-/// The storage to exchange the messages
+/// A 64 bit counter
+public protocol Counter {
+    /// The StorageP2P counter value
+    var sp2pCounter: UInt64 { get set }
+}
+extension UInt64: Counter {
+    public var sp2pCounter: UInt64 {
+        get { self }
+        set { self = newValue }
+    }
+}
+
+
+/// A read-only storage
 public protocol Storage {
     /// Lists all entries in the storage
     ///
@@ -14,6 +27,11 @@ public protocol Storage {
     ///  - Returns: The contents of the entry
     ///  - Throws: An exception if the entry does not exist or cannot be read
     func read<D: DataProtocol>(name: D) throws -> Data
+}
+
+
+/// A mutable storage
+public protocol MutableStorage: Storage {
     /// Atomically creates/replaces an entry
     ///
     ///  - Parameters:
@@ -27,37 +45,4 @@ public protocol Storage {
     ///  - Parameter name: The name of the entry to delete
     ///  - Throws: If the entry exists but cannot be deleted (it is *not* an error if the entry does not exist)
     func delete<D: DataProtocol>(name: D) throws
-}
-
-
-/// A read-only storage wrapper
-public class ReadOnlyStorage: Storage {
-    /// The associated error
-    public enum Error: Swift.Error {
-        /// The access was denied
-        case accessDenied(String, String = #file, Int = #line)
-    }
-    
-    /// The wrapped storage instance
-    private let storage: Storage
-    
-    /// Creates a new read-only storage wrapper
-    ///
-    ///  - Parameter storage: The underlying storage
-    public init(wrapping storage: Storage) {
-        self.storage = storage
-    }
-    
-    public func list() throws -> [Data] {
-        try self.storage.list()
-    }
-    public func read<D: DataProtocol>(name: D) throws -> Data {
-        try self.storage.read(name: name)
-    }
-    public func write<D: DataProtocol>(name: D, data: Data) throws {
-        throw Error.accessDenied("Cannot write because the storage is read-only")
-    }
-    public func delete<D: DataProtocol>(name: D) throws {
-        throw Error.accessDenied("Cannot delete because the storage is read-only")
-    }
 }

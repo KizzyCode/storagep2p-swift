@@ -72,7 +72,7 @@ func fuzz() {
     clients.forEach({ client in
         uuids.filter({ $0 != client.local })
             .map({ ConnectionID(local: client.local, remote: $0) })
-            .forEach({ client.peers.append((conn: $0, rx: 0, tx: 0)) })
+            .forEach({ client.peers.append((conn: $0, rx: CounterImpl(value: 0), tx: CounterImpl(value: 0))) })
     })
 
     // Start fuzzing

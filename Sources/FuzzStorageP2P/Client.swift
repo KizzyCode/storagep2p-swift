@@ -14,14 +14,25 @@ private struct Message {
 }
 
 
+/// A SP2P counter
+public class CounterImpl: Counter {
+    public var sp2pCounter: UInt64
+    
+    /// Creates a new counter
+    ///
+    ///  - Parameter value: The counter value
+    public init(value: UInt64 = 0) {
+        self.sp2pCounter = value
+    }
+}
+
+
 /// A client for fuzzing
 public class Client {
-    /// The underlying socket
-    private let socket = Socket(state: StateImpl(), storage: StorageImpl())
     /// The `storage_p2p` address of this client
     public let local: UUID = UUID()
     /// The peer connection IDs to fuzz together with the associated RX and TX counters
-    public var peers: [(conn: ConnectionID, rx: UInt64, tx: UInt64)] = []
+    public var peers: [(conn: ConnectionID, rx: CounterImpl, tx: CounterImpl)] = []
     
     /// Creates a new fuzzing client
     public init() {}
@@ -43,11 +54,11 @@ public class Client {
                     // Generate deterministic message
                     let message = Message.create(sender: self.peers[peer].conn.local,
                                                  receiver: self.peers[peer].conn.remote,
-                                                 counter: self.peers[peer].tx)
+                                                 counter: self.peers[peer].tx.sp2pCounter)
                 
                     // Send message
-                    retry({ try self.socket.send(conn: self.peers[peer].conn, message: message) })
-                    self.peers[peer].tx += 1
+                    let sender = Sender(id: self.peers[peer].conn, at: self.peers[peer].tx, storage: StorageImpl())
+                    retry({ try sender.send(message: message) })
                 })
             }
         }
@@ -56,26 +67,29 @@ public class Client {
     public func receive() {
         for peer in self.peers.indices {
             autoreleasepool(invoking: {
-                // Get connection and receive messages
-                while retry({ try self.socket.canReceive(conn: self.peers[peer].conn) }) {
+                // Create the receiver
+                let receiver = Receiver(id: self.peers[peer].conn, at: self.peers[peer].rx, storage: StorageImpl())
+                
+                // Receive all pending messages
+                while let peeked = retry({ try receiver.peek(nth: 0) }) {
                     // Generate expected message
                     let expected = Message.create(sender: self.peers[peer].conn.remote,
-                                                  receiver: self.peers[peer].conn.local, counter: self.peers[peer].rx)
+                                                  receiver: self.peers[peer].conn.local,
+                                                  counter: self.peers[peer].rx.sp2pCounter)
                     
-                    // Peek at and validate the message
-                    var message = retry({ try self.socket.peek(conn: self.peers[peer].conn, nth: 0) })!
-                    assert(message == expected, "Unexpected message: expected ",
-                           String(data: expected, encoding: .utf8)!, ", got: ", String(data: message, encoding: .utf8)!)
+                    // Validate the peeked message
+                    assert(peeked == expected, "Unexpected message: expected ",
+                           String(data: expected, encoding: .utf8)!, ", got: ", String(data: peeked, encoding: .utf8)!)
                     
                     // Receive and validate message
-                    message = retry({ try self.socket.receive(conn: self.peers[peer].conn) })
-                    assert(message == expected, "Unexpected message: expected ",
-                           String(data: expected, encoding: .utf8)!, ", got: ", String(data: message, encoding: .utf8)!)
-                    self.peers[peer].rx += 1
+                    let received = retry({ try receiver.receive() })
+                    assert(received == expected, "Unexpected message: expected ",
+                           String(data: expected, encoding: .utf8)!, ", got: ",
+                           String(data: received ?? Data([0x6E, 0x69, 0x6C]), encoding: .utf8)!)
                 }
                 
                 // Perform a garbage collection
-                retry({ try self.socket.gc(conn: self.peers[peer].conn) })
+                retry({ try receiver.gc() })
             })
         }
     }

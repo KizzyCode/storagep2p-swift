@@ -11,16 +11,6 @@ public enum StorageError: Error {
 }
 
 
-/// A `PersistentState.Storage` implementation
-public class StateImpl: State {
-    /// The state entries
-    public var stateDict: [ConnectionID: StateObject] = [:]
-    
-    /// Creates a new `StateImpl` instane
-    public init() {}
-}
-
-
 /// A global shared `Storage` implementation
 public class StorageImpl {
     /// The storage entries
@@ -30,7 +20,7 @@ public class StorageImpl {
         Self.entries.read({ $0.isEmpty })
     }
     
-    /// Creates a new `StorageImpl` instane
+    /// Creates an accessor for the shared underlying storage
     public init() {}
     
     /// Fails randomly to simulate errors
@@ -40,7 +30,7 @@ public class StorageImpl {
         }
     }
 }
-extension StorageImpl: StorageP2P.Storage {
+extension StorageImpl: StorageP2P.MutableStorage {
     public func list() throws -> [Data] {
         try self.testError(probability: Config.pError)
         return Self.entries.read({ [Data]($0.keys) })
