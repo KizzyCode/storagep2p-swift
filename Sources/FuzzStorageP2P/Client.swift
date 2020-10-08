@@ -16,13 +16,13 @@ private struct Message {
 
 /// A SP2P counter
 public class CounterImpl: Counter {
-    public var sp2pCounter: UInt64
+    public var value: UInt64
     
     /// Creates a new counter
     ///
     ///  - Parameter value: The counter value
     public init(value: UInt64 = 0) {
-        self.sp2pCounter = value
+        self.value = value
     }
 }
 
@@ -54,7 +54,7 @@ public class Client {
                     // Generate deterministic message
                     let message = Message.create(sender: self.peers[peer].conn.local,
                                                  receiver: self.peers[peer].conn.remote,
-                                                 counter: self.peers[peer].tx.sp2pCounter)
+                                                 counter: self.peers[peer].tx.value)
                 
                     // Send message
                     let sender = Sender(id: self.peers[peer].conn, at: self.peers[peer].tx, storage: StorageImpl())
@@ -75,7 +75,7 @@ public class Client {
                     // Generate expected message
                     let expected = Message.create(sender: self.peers[peer].conn.remote,
                                                   receiver: self.peers[peer].conn.local,
-                                                  counter: self.peers[peer].rx.sp2pCounter)
+                                                  counter: self.peers[peer].rx.value)
                     
                     // Validate the peeked message
                     assert(peeked == expected, "Unexpected message: expected ",

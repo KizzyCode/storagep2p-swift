@@ -52,7 +52,7 @@ public class Viewer {
     public func peek(nth: UInt64 = 0) throws -> Data? {
         // Read the message if it exists
         let header = MessageHeader(sender: self.id.remote, receiver: self.id.local,
-                                   counter: self.position.sp2pCounter + nth)
+                                   counter: self.position.value + nth)
         guard try self.storage.list().contains(header.derEncoded()) else {
             return nil
         }
@@ -92,9 +92,9 @@ public class Receiver: Viewer {
     public func receive() throws -> Data? {
         // Write the message
         let header = MessageHeader(sender: self.id.remote, receiver: self.id.local,
-                                   counter: self.position.sp2pCounter)
+                                   counter: self.position.value)
         let message = try self.storage.read(name: header.derEncoded())
-        self.position.sp2pCounter += 1
+        self.position.value += 1
         
         // Perform an opportunistic garbage collection
         try? self.gc()
@@ -109,7 +109,7 @@ public class Receiver: Viewer {
     ///  - Throws: If an entry is invalid or if a local or remote I/O-error occurred
     public func gc() throws {
         // Capture state and delete all messages `remote -> local` where `message.counter < state.counterRX`
-        let position = self.position.sp2pCounter
+        let position = self.position.value
         try self.storage.list()
             .compactMap({ try? MessageHeader(derEncoded: $0) })
             .filter({ $0.sender == self.id.remote && $0.receiver == self.id.local })
@@ -151,8 +151,8 @@ public class Sender {
     ///  - Throws: If a local or remote I/O-error occurred
     public func send(message: Data) throws {
         // Write the message
-        let header = MessageHeader(sender: self.id.local, receiver: self.id.remote, counter: self.position.sp2pCounter)
+        let header = MessageHeader(sender: self.id.local, receiver: self.id.remote, counter: self.position.value)
         try self.storage.write(name: header.derEncoded(), data: message)
-        self.position.sp2pCounter += 1
+        self.position.value += 1
     }
 }

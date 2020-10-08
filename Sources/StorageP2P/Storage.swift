@@ -4,10 +4,10 @@ import Foundation
 /// A 64 bit counter
 public protocol Counter {
     /// The StorageP2P counter value
-    var sp2pCounter: UInt64 { get set }
+    var value: UInt64 { get set }
 }
 extension UInt64: Counter {
-    public var sp2pCounter: UInt64 {
+    public var value: UInt64 {
         get { self }
         set { self = newValue }
     }
