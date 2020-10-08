@@ -5,11 +5,11 @@ import Asn1Der
 /// A persistent state object
 public protocol State {
     /// The state object
-    var rawDict: [ConnectionID: StateObject] { get set }
+    var stateDict: [ConnectionID: StateObject] { get set }
 }
 internal extension State {
     /// The state dictionary keys
-    var keys: Dictionary<ConnectionID, StateObject>.Keys { self.rawDict.keys }
+    var keys: Dictionary<ConnectionID, StateObject>.Keys { self.stateDict.keys }
     
     /// Gets the current value or inserts a new value and returns it
     ///
@@ -18,16 +18,16 @@ internal extension State {
     ///     - value: The value
     ///  - Returns: The value
     mutating func getOrInsert(key: ConnectionID, default: StateObject) -> StateObject {
-        if self.rawDict[key] == nil {
-            self.rawDict[key] = `default`
+        if self.stateDict[key] == nil {
+            self.stateDict[key] = `default`
         }
-        return self.rawDict[key]!
+        return self.stateDict[key]!
     }
     
     /// Gets or sets a value
     subscript(_ key: ConnectionID) -> StateObject? {
-        get { self.rawDict[key] }
-        set { self.rawDict[key] = newValue }
+        get { self.stateDict[key] }
+        set { self.stateDict[key] = newValue }
     }
 }
 

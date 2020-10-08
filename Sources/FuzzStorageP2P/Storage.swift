@@ -14,7 +14,7 @@ public enum StorageError: Error {
 /// A `PersistentState.Storage` implementation
 public class StateImpl: State {
     /// The state entries
-    public var rawDict: [ConnectionID: StateObject] = [:]
+    public var stateDict: [ConnectionID: StateObject] = [:]
     
     /// Creates a new `StateImpl` instane
     public init() {}
