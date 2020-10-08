@@ -7,12 +7,13 @@ public struct Discovery {
     /// The storage used to exchange messages
     public let storage: Storage
     
-    /// Scans all entries for pending messages to a local half
+    /// Scans all entries for pending messages sent to a specific endpoint
     ///
-    ///  - Parameter local: The UUID of the local endpoint to scan for
-    public func scan(local: UUID) throws -> [ConnectionID] {
+    ///  - Parameter local: The address of the local endpoint
+    ///  - Returns: All connections that have pending messages `* -> local`
+    public func scan(local: Address) throws -> [ConnectionID] {
         try self.storage.list()
-            .compactMap({ try? MessageHeader(derEncoded: $0) })
+            .compactMap({ try? DERDecoder().decode(MessageHeader.self, from: $0) })
             .filter({ $0.receiver == local })
             .map({ ConnectionID(local: $0.receiver, remote: $0.sender) })
     }
@@ -50,13 +51,16 @@ public class Viewer {
     ///  - Returns: The `nth` pending message if any
     ///  - Throws: If an entry is invalid or if a local or remote I/O-error occurred
     public func peek(nth: UInt64 = 0) throws -> Data? {
-        // Read the message if it exists
+        // Create the header
         let header = MessageHeader(sender: self.id.remote, receiver: self.id.local,
                                    counter: self.position.value + nth)
-        guard try self.storage.list().contains(header.derEncoded()) else {
+        let headerBytes = try DEREncoder().encode(header)
+        
+        // Read the message
+        guard try self.storage.list().contains(headerBytes) else {
             return nil
         }
-        return try self.storage.read(name: header.derEncoded())
+        return try self.storage.read(name: headerBytes)
     }
 }
 
@@ -64,7 +68,7 @@ public class Viewer {
 /// A connection reader
 public class Receiver: Viewer {
     /// The storage used to exchange messages
-    internal let mutableStorage: MutableStorage
+    internal var mutableStorage: MutableStorage
     
     /// Creates a new connection receiver
     ///
@@ -90,13 +94,16 @@ public class Receiver: Viewer {
     ///  - Returns: The received message if any
     ///  - Throws: If an entry is invalid or if a local or remote I/O-error occurred
     public func receive() throws -> Data? {
-        // Write the message
+        // Create the header
         let header = MessageHeader(sender: self.id.remote, receiver: self.id.local,
                                    counter: self.position.value)
-        let message = try self.storage.read(name: header.derEncoded())
+        let headerBytes = try DEREncoder().encode(header)
+        
+        // Receive the message
+        let message = try self.storage.read(name: headerBytes)
         self.position.value += 1
         
-        // Perform an opportunistic garbage collection
+        // Perform an opportunistic garbage collection and return
         try? self.gc()
         return message
     }
@@ -110,11 +117,18 @@ public class Receiver: Viewer {
     public func gc() throws {
         // Capture state and delete all messages `remote -> local` where `message.counter < state.counterRX`
         let position = self.position.value
-        try self.storage.list()
-            .compactMap({ try? MessageHeader(derEncoded: $0) })
-            .filter({ $0.sender == self.id.remote && $0.receiver == self.id.local })
-            .filter({ $0.counter < position })
-            .forEach({ try self.mutableStorage.delete(name: $0.derEncoded()) })
+        for headerBytes in try self.storage.list() {
+            // Decode the header
+            if let header = try? DERDecoder().decode(MessageHeader.self, from: headerBytes) {
+                // Delete the message if it
+                //  - belongs to our connection
+                //  - is an incoming message
+                //  - has been received (i.e. it's counter is lower then the current position)
+                if header.sender == self.id.remote && header.receiver == self.id.local && header.counter < position {
+                    try self.mutableStorage.delete(name: headerBytes)
+                }
+            }
+        }
     }
 }
 
@@ -126,7 +140,7 @@ public class Sender {
     /// The TX position within the connection
     internal(set) public var position: Counter
     /// The storage used to exchange messages
-    internal let storage: MutableStorage
+    internal var mutableStorage: MutableStorage
     
     /// Creates a new connection receiver
     ///
@@ -138,7 +152,7 @@ public class Sender {
     public init(id: ConnectionID, at position: Counter = UInt64(0), storage: MutableStorage) {
         self.id = id
         self.position = position
-        self.storage = storage
+        self.mutableStorage = storage
     }
     
     /// Sends a message
@@ -150,9 +164,12 @@ public class Sender {
     ///  - Parameter message: The message to send
     ///  - Throws: If a local or remote I/O-error occurred
     public func send(message: Data) throws {
-        // Write the message
+        // Create the header
         let header = MessageHeader(sender: self.id.local, receiver: self.id.remote, counter: self.position.value)
-        try self.storage.write(name: header.derEncoded(), data: message)
+        let headerBytes = try DEREncoder().encode(header)
+        
+        // Write the message
+        try self.mutableStorage.write(name: headerBytes, data: message)
         self.position.value += 1
     }
 }

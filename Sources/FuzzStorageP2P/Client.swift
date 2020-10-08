@@ -2,13 +2,10 @@ import Foundation
 import StorageP2P
 
 
-public typealias UUID = StorageP2P.UUID
-
-
 /// Generates deterministic test messages
 private struct Message {
     /// Generates the deterministic test message for `sender->receiver:ctr`
-    public static func create(sender: UUID, receiver: UUID, counter: UInt64) -> Data {
+    public static func create(sender: Address, receiver: Address, counter: UInt64) -> Data {
         "sender: \(sender.bytes), receiver: \(receiver.bytes), counter: \(counter)".data(using: .utf8)!
     }
 }
@@ -30,7 +27,7 @@ public class CounterImpl: Counter {
 /// A client for fuzzing
 public class Client {
     /// The `storage_p2p` address of this client
-    public let local: UUID = UUID()
+    public let local: Address = Address()
     /// The peer connection IDs to fuzz together with the associated RX and TX counters
     public var peers: [(conn: ConnectionID, rx: CounterImpl, tx: CounterImpl)] = []
     

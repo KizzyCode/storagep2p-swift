@@ -39,10 +39,10 @@ public protocol MutableStorage: Storage {
     ///       from the Base64Urlsafe character set (without `=`).
     ///     - data: The entry data
     ///  - Throws: If the entry cannot be written
-    func write<D: DataProtocol>(name: D, data: Data) throws
+    mutating func write<D: DataProtocol>(name: D, data: Data) throws
     /// Deletes an entry if it exists
     ///
     ///  - Parameter name: The name of the entry to delete
     ///  - Throws: If the entry exists but cannot be deleted (it is *not* an error if the entry does not exist)
-    func delete<D: DataProtocol>(name: D) throws
+    mutating func delete<D: DataProtocol>(name: D) throws
 }
