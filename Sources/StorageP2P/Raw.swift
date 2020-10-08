@@ -1,20 +1,5 @@
 import Foundation
-import PersistentState
 import Asn1Der
-
-
-/// An ASN.1-DER coder
-internal struct Asn1Coder: Coder {
-    public static var `default`: Coder { Asn1Coder() }
-    
-    public func encode<T: Encodable>(_ value: T) throws -> Data {
-        try DEREncoder().encode(value)
-    }
-    
-    public func decode<T: Decodable>(_ type: T.Type, from data: Data) throws -> T {
-        try DERDecoder().decode(type, from: data)
-    }
-}
 
 
 // Convenience extensions for DER coding
@@ -24,14 +9,7 @@ internal extension Encodable {
     ///  - Returns: The DER encoded bytes of `self`
     ///  - Throws: `DERError.unsupported` if value or a subfield is not supported by the encoder
     func derEncoded() throws -> Data {
-        try Asn1Coder.default.encode(self)
-    }
-    /// The Base64 URL-safe DER encoded bytes of `self`
-    ///
-    ///  - Returns: The DER and then Base64Urlsafe encoded bytes of `self`
-    ///  - Throws: `DERError.unsupported` if value or a subfield is not supported by the encoder
-    func derEncodedUrlsafe() throws -> String {
-        try self.derEncoded().base64Urlsafe
+        try DEREncoder().encode(self)
     }
 }
 // Convenience extensions for DER coding
@@ -41,17 +19,7 @@ internal extension Decodable {
     ///  - Parameter derEncoded: The DER encoded bytes
     ///  - Throws: `DERError` in case of decoding errors
     init(derEncoded: Data) throws {
-        self = try Asn1Coder.default.decode(Self.self, from: derEncoded)
-    }
-    /// DER decodes `self` from `derEncoded`
-    ///
-    ///  - Parameter derUrlsafeEncoded: The Base64Urlsafe+DER encoded bytes
-    ///  - Throws: `DERError` in case of decoding errors
-    init(derUrlsafeEncoded: String) throws {
-        guard let data = Data(base64Urlsafe: derUrlsafeEncoded) else {
-            throw DERError.invalidData("Invalid Base64Urlsafe encoding")
-        }
-        try self.init(derEncoded: data)
+        self = try DERDecoder().decode(from: derEncoded)
     }
 }
 
@@ -118,18 +86,18 @@ public struct ConnectionID: Hashable, Codable {
 
 
 /// A state object
-internal struct StateObject: Codable {
+public struct StateObject: Codable {
     /// The amount of messages received `remote->local`
-    public var counterRX: UInt64
+    internal var counterRX: UInt64
     /// The amount of messages sent `local->remote`
-    public var counterTX: UInt64
+    internal var counterTX: UInt64
     
     /// Creates a new connection ID
     ///
     ///  - Parameters:
     ///     - counterTX: The initial send counter value
     ///     - counterRX: The initial receive counter value
-    public init(counterTX: UInt64 = 0, counterRX: UInt64 = 0) {
+    internal init(counterTX: UInt64 = 0, counterRX: UInt64 = 0) {
         self.counterRX = counterRX
         self.counterTX = counterTX
     }

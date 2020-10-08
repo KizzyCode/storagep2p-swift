@@ -14,19 +14,16 @@ let package = Package(
     ],
     dependencies: [
         .package(
-            url: "https://github.com/KizzyCode/persistentstate-swift",
-            .branch("master")),
-        .package(
             url: "https://github.com/KizzyCode/asn1der-swift",
             .branch("master"))
     ],
     targets: [
         .target(
             name: "StorageP2P",
-            dependencies: ["PersistentState", "Asn1Der"]),
+            dependencies: ["Asn1Der"]),
         .target(
             name: "FuzzStorageP2P",
-            dependencies: ["StorageP2P", "PersistentState"]),
+            dependencies: ["StorageP2P"]),
         .testTarget(
             name: "StorageP2PTests",
             dependencies: ["StorageP2P"])

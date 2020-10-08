@@ -1,6 +1,5 @@
 import Foundation
 import StorageP2P
-import PersistentState
 
 
 /// An filesystem related error
@@ -13,25 +12,19 @@ public enum StorageError: Error {
 
 
 /// A `PersistentState.Storage` implementation
-public class PersistentStorageImpl {
+public class StateImpl {
     /// The state entries
-    private var entries: [String: Data] = [:]
+    private var entries: [ConnectionID: StateObject] = [:]
     
     /// Creates a new `StateImpl` instane
     public init() {}
 }
-extension PersistentStorageImpl: PersistentState.Storage {
-    public func list() -> [String] {
-        [String](self.entries.keys)
+extension StateImpl: State {
+    public func get() -> [ConnectionID: StateObject] {
+        self.entries
     }
-    public func read<S: StringProtocol>(_ key: S) -> Data? {
-        self.entries[String(key)]
-    }
-    public func write<S: StringProtocol, D: DataProtocol>(_ key: S, value: D) throws {
-        self.entries[String(key)] = Data(value)
-    }
-    public func delete<S: StringProtocol>(_ key: S) {
-        self.entries[String(key)] = nil
+    public func set(_ value: [ConnectionID: StateObject]) {
+        self.entries = value
     }
 }
 
@@ -39,7 +32,7 @@ extension PersistentStorageImpl: PersistentState.Storage {
 /// A global shared `Storage` implementation
 public class StorageImpl {
     /// The storage entries
-    private static var entries: RwLock<[String: Data]> = RwLock([:])
+    private static var entries: RwLock<[Data: Data]> = RwLock([:])
     /// Checks whether the storage is empty
     public static var isEmpty: Bool {
         Self.entries.read({ $0.isEmpty })
@@ -56,24 +49,24 @@ public class StorageImpl {
     }
 }
 extension StorageImpl: StorageP2P.Storage {
-    public func list() throws -> [String] {
+    public func list() throws -> [Data] {
         try self.testError(probability: Config.pError)
-        return Self.entries.read({ [String]($0.keys) })
+        return Self.entries.read({ [Data]($0.keys) })
     }
-    public func read<S: StringProtocol>(name: S) throws -> Data {
+    public func read<D: DataProtocol>(name: D) throws -> Data {
         try self.testError(probability: Config.pError)
         return try Self.entries.read({
-            try $0[String(name)] ?? { throw StorageError.noSuchEntry() }()
+            try $0[Data(name)] ?? { throw StorageError.noSuchEntry() }()
         })
     }
-    public func write<S: StringProtocol>(name: S, data: Data) throws {
+    public func write<D: DataProtocol>(name: D, data: Data) throws {
         try self.testError(probability: Config.pError / 2)
-        Self.entries.write({ $0[String(name)] = data })
+        Self.entries.write({ $0[Data(name)] = data })
         try self.testError(probability: Config.pError / 2)
     }
-    public func delete<S: StringProtocol>(name: S) throws {
+    public func delete<D: DataProtocol>(name: D) throws {
         try self.testError(probability: Config.pError / 2)
-        Self.entries.write({ $0[String(name)] = nil })
+        Self.entries.write({ $0[Data(name)] = nil })
         try self.testError(probability: Config.pError / 2)
     }
 }

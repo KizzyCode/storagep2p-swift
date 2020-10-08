@@ -1,6 +1,5 @@
 import Foundation
 import StorageP2P
-import PersistentState
 
 
 public typealias UUID = StorageP2P.UUID
@@ -18,7 +17,7 @@ private struct Message {
 /// A client for fuzzing
 public class Client {
     /// The underlying socket
-    private let socket = Socket(persistent: PersistentStorageImpl(), storage: StorageImpl())
+    private let socket = Socket(state: StateImpl(), storage: StorageImpl())
     /// The `storage_p2p` address of this client
     public let local: UUID = UUID()
     /// The peer connection IDs to fuzz together with the associated RX and TX counters
