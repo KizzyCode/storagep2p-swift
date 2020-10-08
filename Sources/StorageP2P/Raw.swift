@@ -2,33 +2,33 @@ import Foundation
 import Asn1Der
 
 
-/// An endpoint address
-public struct Address: Hashable, Codable {
-    /// The address bytes
+/// A unique ID
+public struct UniqueID: Hashable, Codable {
+    /// The ID bytes
     public let bytes: Data
     
-    /// Creates a new cryptographically secure 24 byte random address
+    /// Creates a new cryptographically secure 24 byte random ID
     public init() {
         var bytes = Data(count: 24)
         precondition(bytes.withUnsafeMutableBytes({ SecRandomCopyBytes(nil, $0.count, $0.baseAddress!) })
             == errSecSuccess, "Failed to generate random bytes")
         self.bytes = bytes
     }
-    /// Generates an address from a predefined/assigned value
+    /// Generates an ID from a predefined/assigned value
     ///
-    ///  - Parameter predefined: The predefined address
+    ///  - Parameter predefined: The predefined ID
     ///
-    ///  - Warning: The predefined address should be unique within it's environment and should not be longer than 24
-    ///             bytes or else it might cause undefined behaviour/weird bugs.
+    ///  - Warning: The predefined ID should be unique within it's environment and should not be longer than 24 bytes or
+    ///             else it might cause undefined behaviour/weird bugs.
     public init<D: DataProtocol>(predefined: D) {
         self.bytes = Data(predefined)
     }
-    /// Generates an address from a predefined/assigned value
+    /// Generates an ID from a predefined/assigned value
     ///
-    ///  - Parameter predefined: The predefined address
+    ///  - Parameter predefined: The predefined ID
     ///
-    ///  - Warning: The predefined address should be unique within it's environment and should not be longer than 24
-    ///             bytes or else it might cause undefined behaviour/weird bugs.
+    ///  - Warning: The predefined ID should be unique within it's environment and should not be longer than 24 bytes or
+    ///             else it might cause undefined behaviour/weird bugs.
     public init<S: StringProtocol>(predefined: S) {
         self.init(predefined: predefined.data(using: .utf8)!)
     }
@@ -46,17 +46,17 @@ public struct Address: Hashable, Codable {
 
 /// A connection ID
 public struct ConnectionID: Hashable, Codable {
-    /// The local client address
-    public let local: Address
-    /// The remote client address
-    public let remote: Address
+    /// The local client ID
+    public let local: UniqueID
+    /// The remote client ID
+    public let remote: UniqueID
     
     /// Creates a new connection ID
     ///
     ///  - Parameters:
-    ///     - local: The address of the local connection endpoint
-    ///     - remote: The address of the remote connection endpoint
-    public init(local: Address, remote: Address) {
+    ///     - local: The ID of the local connection endpoint
+    ///     - remote: The ID of the remote connection endpoint
+    public init(local: UniqueID, remote: UniqueID) {
         self.local = local
         self.remote = remote
     }
@@ -85,19 +85,19 @@ public struct StateObject: Codable {
 /// A message header
 internal struct MessageHeader: Codable {
     /// The message sender
-    public let sender: Address
+    public let sender: UniqueID
     /// The message receiver
-    public let receiver: Address
+    public let receiver: UniqueID
     /// The message counter
     public let counter: UInt64
     
     /// Creates a new message header
     ///
     ///  - Parameters:
-    ///     - sender: The message sender
-    ///     - receiver: The message receiver
+    ///     - sender: The message ID
+    ///     - receiver: The message ID
     ///     - counter: The message counter in the `sender->receiver` context
-    public init(sender: Address, receiver: Address, counter: UInt64) {
+    public init(sender: UniqueID, receiver: UniqueID, counter: UInt64) {
         self.sender = sender
         self.receiver = receiver
         self.counter = counter

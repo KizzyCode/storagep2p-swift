@@ -64,13 +64,13 @@ public func stdout(_ string: StaticString) {
 
 /// Performs the fuzzing
 func fuzz() {
-    // Create connections and collect all addresses
+    // Create connections and collect all IDs
     let clients = (0 ..< Config.threadCount).map({ _ in Client() })
-    let addresses = clients.map({ $0.local })
+    let ids = clients.map({ $0.local })
 
     // Set peers
     clients.forEach({ client in
-        addresses.filter({ $0 != client.local })
+        ids.filter({ $0 != client.local })
             .map({ ConnectionID(local: client.local, remote: $0) })
             .forEach({ client.peers.append((conn: $0, rx: CounterImpl(value: 0), tx: CounterImpl(value: 0))) })
     })
