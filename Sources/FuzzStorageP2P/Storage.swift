@@ -41,9 +41,9 @@ extension StorageImpl: StorageP2P.MutableStorage {
             try $0[Data(name)] ?? { throw StorageError.noSuchEntry() }()
         })
     }
-    public func write<D: DataProtocol>(name: D, data: Data) throws {
+    public func write<D0: DataProtocol, D1: DataProtocol>(name: D0, data: D1) throws {
         try self.testError(probability: Config.pError / 2)
-        Self.entries.write({ $0[Data(name)] = data })
+        Self.entries.write({ $0[Data(name)] = Data(data) })
         try self.testError(probability: Config.pError / 2)
     }
     public func delete<D: DataProtocol>(name: D) throws {

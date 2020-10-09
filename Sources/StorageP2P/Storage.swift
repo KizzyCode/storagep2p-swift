@@ -1,15 +1,30 @@
 import Foundation
 
 
-/// A 64 bit counter
-public protocol Counter {
-    /// The StorageP2P counter value
-    var value: UInt64 { get set }
-}
-extension UInt64: Counter {
-    public var value: UInt64 {
-        get { self }
-        set { self = newValue }
+/// A value provider
+open class ValueProvider<T> {
+    /// A computed property that wraps the `load` and `store` calls
+    open var value: T {
+        get { try! self.load() }
+        set { try! self.store(newValue) }
+    }
+    
+    /// An initializer
+    ///
+    ///  - Warning: Don't call this initializer directly. This class must always be initialized through it's subclasses.
+    public init() {}
+    
+    /// Loads the value
+    ///
+    ///  - Returns: The loaded value
+    open func load() throws -> T {
+        fatalError("This function must be overridden by the subclass")
+    }
+    /// Stores the value
+    ///
+    ///  - Parameter newValue: The new value to store
+    open func store(_ newValue: T) throws {
+        fatalError("This function must be overridden by the subclass")
     }
 }
 
@@ -39,7 +54,7 @@ public protocol MutableStorage: Storage {
     ///       from the Base64Urlsafe character set (without `=`).
     ///     - data: The entry data
     ///  - Throws: If the entry cannot be written
-    mutating func write<D: DataProtocol>(name: D, data: Data) throws
+    mutating func write<D0: DataProtocol, D1: DataProtocol>(name: D0, data: D1) throws
     /// Deletes an entry if it exists
     ///
     ///  - Parameter name: The name of the entry to delete

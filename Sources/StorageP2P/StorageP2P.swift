@@ -32,7 +32,7 @@ public class Viewer {
     /// The connection ID
     public let id: ConnectionID
     /// The RX position within the connection
-    internal(set) public var position: Counter
+    internal(set) public var position: ValueProvider<UInt64>
     /// The storage used to exchange messages
     internal let storage: Storage
     
@@ -43,7 +43,7 @@ public class Viewer {
     ///     - position: The RX position within the connection (i.e. the amount of messages received, required to resume
     ///                 a connection)
     ///     - storage: The storage used to exchange messages
-    public init(id: ConnectionID, at position: Counter = UInt64(0), storage: Storage) {
+    public init(id: ConnectionID, at position: ValueProvider<UInt64>, storage: Storage) {
         self.id = id
         self.position = position
         self.storage = storage
@@ -59,9 +59,8 @@ public class Viewer {
     ///  - Throws: If an entry is invalid or if a local or remote I/O-error occurred
     public func peek(nth: UInt64 = 0) throws -> Data? {
         // Create the header
-        let header = MessageHeader(sender: self.id.remote, receiver: self.id.local,
-                                   counter: self.position.value + nth)
-        let headerBytes = try DEREncoder().encode(header)
+        let header = MessageHeader(sender: self.id.remote, receiver: self.id.local, counter: self.position.value + nth),
+            headerBytes = try DEREncoder().encode(header)
         
         // Read the message
         guard try self.storage.list().contains(headerBytes) else {
@@ -84,7 +83,7 @@ public class Receiver: Viewer {
     ///     - position: The position within the connection (i.e. the amount of messages received, required to resume a
     ///                 connection)
     ///     - storage: The storage used to exchange messages
-    public init(id: ConnectionID, at position: Counter = UInt64(0), storage: MutableStorage) {
+    public init(id: ConnectionID, at position: ValueProvider<UInt64>, storage: MutableStorage) {
         self.mutableStorage = storage
         super.init(id: id, at: position, storage: storage)
     }
@@ -102,9 +101,8 @@ public class Receiver: Viewer {
     ///  - Throws: If an entry is invalid or if a local or remote I/O-error occurred
     public func receive() throws -> Data? {
         // Create the header
-        let header = MessageHeader(sender: self.id.remote, receiver: self.id.local,
-                                   counter: self.position.value)
-        let headerBytes = try DEREncoder().encode(header)
+        let header = MessageHeader(sender: self.id.remote, receiver: self.id.local, counter: self.position.value),
+            headerBytes = try DEREncoder().encode(header)
         
         // Receive the message
         let message = try self.storage.read(name: headerBytes)
@@ -145,7 +143,7 @@ public class Sender {
     /// The connection ID
     public let id: ConnectionID
     /// The TX position within the connection
-    internal(set) public var position: Counter
+    internal(set) public var position: ValueProvider<UInt64>
     /// The storage used to exchange messages
     internal var mutableStorage: MutableStorage
     
@@ -156,7 +154,7 @@ public class Sender {
     ///     - position: The position within the connection (i.e. the amount of messages sent, required to resume a
     ///                 connection)
     ///     - storage: The storage used to exchange messages
-    public init(id: ConnectionID, at position: Counter = UInt64(0), storage: MutableStorage) {
+    public init(id: ConnectionID, at position: ValueProvider<UInt64>, storage: MutableStorage) {
         self.id = id
         self.position = position
         self.mutableStorage = storage
@@ -172,8 +170,8 @@ public class Sender {
     ///  - Throws: If a local or remote I/O-error occurred
     public func send(message: Data) throws {
         // Create the header
-        let header = MessageHeader(sender: self.id.local, receiver: self.id.remote, counter: self.position.value)
-        let headerBytes = try DEREncoder().encode(header)
+        let header = MessageHeader(sender: self.id.local, receiver: self.id.remote, counter: self.position.value),
+            headerBytes = try DEREncoder().encode(header)
         
         // Write the message
         try self.mutableStorage.write(name: headerBytes, data: message)

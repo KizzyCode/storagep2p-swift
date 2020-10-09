@@ -10,7 +10,7 @@ public class RwLock<T> {
     
     /// Creates a new atomic
     public init(_ value: T) {
-	    self.value = value
+        self.value = value
     }
     
     /// Provides shared read-only access to the underlying value
@@ -33,15 +33,15 @@ public class Thread<T> {
     
     /// Executes `block` in a new thread
     public init(run block: @escaping () -> T) {
-	    DispatchQueue.global().async(execute: {
-    	    self.result = block()
-    	    self.semaphore.signal()
-	    })
+        DispatchQueue.global().async(execute: {
+            self.result = block()
+            self.semaphore.signal()
+        })
     }
     
     /// Joins the thread
     public func join() -> T {
-	    self.semaphore.wait()
-	    return self.result!
+        self.semaphore.wait()
+        return self.result!
     }
 }

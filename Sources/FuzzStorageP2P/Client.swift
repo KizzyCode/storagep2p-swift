@@ -12,14 +12,23 @@ private struct Message {
 
 
 /// A SP2P counter
-public class CounterImpl: Counter {
-    public var value: UInt64
+public class Counter: ValueProvider<UInt64> {
+    /// The real value
+    private var _value: UInt64
     
     /// Creates a new counter
     ///
-    ///  - Parameter value: The counter value
-    public init(value: UInt64 = 0) {
-        self.value = value
+    ///  - Parameter value: The initial value
+    public init(_ value: UInt64 = 0) {
+        self._value = value
+        super.init()
+    }
+    
+    override public func load() throws -> UInt64 {
+        self._value
+    }
+    override public func store(_ newValue: UInt64) throws {
+        self._value = newValue
     }
 }
 
@@ -29,7 +38,7 @@ public class Client {
     /// The `storage_p2p` ID of this client
     public let local: UniqueID = UniqueID()
     /// The peer connection IDs to fuzz together with the associated RX and TX counters
-    public var peers: [(conn: ConnectionID, rx: CounterImpl, tx: CounterImpl)] = []
+    public var peers: [(conn: ConnectionID, rx: Counter, tx: Counter)] = []
     
     /// Creates a new fuzzing client
     public init() {}
@@ -52,7 +61,7 @@ public class Client {
                     let message = Message.create(sender: self.peers[peer].conn.local,
                                                  receiver: self.peers[peer].conn.remote,
                                                  counter: self.peers[peer].tx.value)
-                	
+                    
                     // Send message
                     let sender = Sender(id: self.peers[peer].conn, at: self.peers[peer].tx, storage: StorageImpl())
                     retry({ try sender.send(message: message) })
