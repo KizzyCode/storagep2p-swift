@@ -44,10 +44,18 @@ public class BoxedValueProvider<T> {
     /// Boxes a value provider
     ///
     ///  - Parameter provider: The value provider to box
-    public init<P: ValueProvider>(_ provider: P) where P.Value == T {
+    public convenience init<P: ValueProvider>(_ provider: P) where P.Value == T {
         var provider = provider
-        self.getter = { try provider.load() }
-        self.setter = { try provider.store($0) }
+        self.init(getter: { try provider.load() }, setter: { try provider.store($0) })
+    }
+    /// Boxes a value provider via it's getter and setter
+    ///
+    ///  - Parameters:
+    ///     - getter: The getter for the value
+    ///     - setter: The setter for the value
+    public init(getter: @escaping () throws -> T, setter: @escaping (T) throws -> Void) {
+        self.getter = getter
+        self.setter = setter
     }
 }
 extension BoxedValueProvider: ValueProvider {
