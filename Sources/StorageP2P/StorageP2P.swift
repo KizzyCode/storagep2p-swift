@@ -32,7 +32,7 @@ public class Viewer {
     /// The connection ID
     public let id: ConnectionID
     /// The RX position within the connection
-    internal(set) public var position: ValueProvider<UInt64>
+    internal(set) public var position: BoxedValueProvider<UInt64>
     /// The storage used to exchange messages
     internal let storage: Storage
     
@@ -43,9 +43,9 @@ public class Viewer {
     ///     - position: The RX position within the connection (i.e. the amount of messages received, required to resume
     ///                 a connection)
     ///     - storage: The storage used to exchange messages
-    public init(id: ConnectionID, at position: ValueProvider<UInt64>, storage: Storage) {
+    public init<T: ValueProvider>(id: ConnectionID, at position: T, storage: Storage) where T.Value == UInt64 {
         self.id = id
-        self.position = position
+        self.position = BoxedValueProvider(position)
         self.storage = storage
     }
     
@@ -83,7 +83,7 @@ public class Receiver: Viewer {
     ///     - position: The position within the connection (i.e. the amount of messages received, required to resume a
     ///                 connection)
     ///     - storage: The storage used to exchange messages
-    public init(id: ConnectionID, at position: ValueProvider<UInt64>, storage: MutableStorage) {
+    public init<T: ValueProvider>(id: ConnectionID, at position: T, storage: MutableStorage) where T.Value == UInt64 {
         self.mutableStorage = storage
         super.init(id: id, at: position, storage: storage)
     }
@@ -143,7 +143,7 @@ public class Sender {
     /// The connection ID
     public let id: ConnectionID
     /// The TX position within the connection
-    internal(set) public var position: ValueProvider<UInt64>
+    internal(set) public var position: BoxedValueProvider<UInt64>
     /// The storage used to exchange messages
     internal var mutableStorage: MutableStorage
     
@@ -154,9 +154,9 @@ public class Sender {
     ///     - position: The position within the connection (i.e. the amount of messages sent, required to resume a
     ///                 connection)
     ///     - storage: The storage used to exchange messages
-    public init(id: ConnectionID, at position: ValueProvider<UInt64>, storage: MutableStorage) {
+    public init<T: ValueProvider>(id: ConnectionID, at position: T, storage: MutableStorage) where T.Value == UInt64 {
         self.id = id
-        self.position = position
+        self.position = BoxedValueProvider(position)
         self.mutableStorage = storage
     }
     

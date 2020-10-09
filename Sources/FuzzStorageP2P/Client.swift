@@ -11,24 +11,26 @@ private struct Message {
 }
 
 
-/// A SP2P counter
-public class Counter: ValueProvider<UInt64> {
-    /// The real value
-    private var _value: UInt64
+/// A 64 bit counter
+public class Counter {
+    /// The counter value
+    private var value: UInt64
     
     /// Creates a new counter
     ///
-    ///  - Parameter value: The initial value
-    public init(_ value: UInt64 = 0) {
-        self._value = value
-        super.init()
+    ///  - Parameter value: The initial counter value
+    public init(_ value: UInt64) {
+        self.value = value
     }
+}
+extension Counter: ValueProvider {
+    public typealias Value = UInt64
     
-    override public func load() throws -> UInt64 {
-        self._value
+    public func load() throws -> UInt64 {
+        self.value
     }
-    override public func store(_ newValue: UInt64) throws {
-        self._value = newValue
+    public func store(_ newValue: UInt64) throws {
+        self.value = newValue
     }
 }
 

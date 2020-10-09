@@ -2,29 +2,62 @@ import Foundation
 
 
 /// A value provider
-open class ValueProvider<T> {
-    /// A computed property that wraps the `load` and `store` calls
-    open var value: T {
-        get { try! self.load() }
-        set { try! self.store(newValue) }
-    }
-    
-    /// An initializer
-    ///
-    ///  - Warning: Don't call this initializer directly. This class must always be initialized through it's subclasses.
-    public init() {}
+public protocol ValueProvider {
+    /// The value type
+    associatedtype Value
     
     /// Loads the value
     ///
     ///  - Returns: The loaded value
-    open func load() throws -> T {
-        fatalError("This function must be overridden by the subclass")
-    }
+    func load() throws -> Value
     /// Stores the value
     ///
     ///  - Parameter newValue: The new value to store
-    open func store(_ newValue: T) throws {
-        fatalError("This function must be overridden by the subclass")
+    mutating func store(_ newValue: Value) throws
+}
+public extension ValueProvider {
+    /// A computed property that wraps the `load` and `store` calls
+    var value: Value {
+        get { try! self.load() }
+        set { try! self.store(newValue) }
+    }
+}
+extension UInt64: ValueProvider {
+    public typealias Value = UInt64
+    
+    public func load() throws -> UInt64 {
+        self
+    }
+    public mutating func store(_ newValue: UInt64) throws {
+        self = newValue
+    }
+}
+
+
+/// A boxed value provider to perform type erasure
+public class BoxedValueProvider<T> {
+    /// The getter
+    private let getter: () throws -> T
+    /// The setter
+    private let setter: (T) throws -> Void
+
+    /// Boxes a value provider
+    ///
+    ///  - Parameter provider: The value provider to box
+    public init<P: ValueProvider>(_ provider: P) where P.Value == T {
+        var provider = provider
+        self.getter = { try provider.load() }
+        self.setter = { try provider.store($0) }
+    }
+}
+extension BoxedValueProvider: ValueProvider {
+    public typealias Value = T
+    
+    public func load() throws -> T {
+        try self.getter()
+    }
+    public func store(_ newValue: T) throws {
+        try self.setter(newValue)
     }
 }
 
