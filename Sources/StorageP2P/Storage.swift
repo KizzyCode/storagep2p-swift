@@ -1,75 +1,6 @@
 import Foundation
 
 
-/// A value provider
-public protocol ValueProvider {
-    /// The value type
-    associatedtype Value
-    
-    /// Loads the value
-    ///
-    ///  - Returns: The loaded value
-    func load() throws -> Value
-    /// Stores the value
-    ///
-    ///  - Parameter newValue: The new value to store
-    mutating func store(_ newValue: Value) throws
-}
-public extension ValueProvider {
-    /// A computed property that wraps the `load` and `store` calls
-    var value: Value {
-        get { try! self.load() }
-        set { try! self.store(newValue) }
-    }
-}
-extension UInt64: ValueProvider {
-    public typealias Value = UInt64
-    
-    public func load() throws -> UInt64 {
-        self
-    }
-    public mutating func store(_ newValue: UInt64) throws {
-        self = newValue
-    }
-}
-
-
-/// A boxed value provider to perform type erasure
-public class BoxedValueProvider<T> {
-    /// The getter
-    private let getter: () throws -> T
-    /// The setter
-    private let setter: (T) throws -> Void
-
-    /// Boxes a value provider
-    ///
-    ///  - Parameter provider: The value provider to box
-    public convenience init<P: ValueProvider>(_ provider: P) where P.Value == T {
-        var provider = provider
-        self.init(getter: { try provider.load() }, setter: { try provider.store($0) })
-    }
-    /// Boxes a value provider via it's getter and setter
-    ///
-    ///  - Parameters:
-    ///     - getter: The getter for the value
-    ///     - setter: The setter for the value
-    public init(getter: @escaping () throws -> T, setter: @escaping (T) throws -> Void) {
-        self.getter = getter
-        self.setter = setter
-    }
-}
-extension BoxedValueProvider: ValueProvider {
-    public typealias Value = T
-    
-    public func load() throws -> T {
-        try self.getter()
-    }
-    public func store(_ newValue: T) throws {
-        try self.setter(newValue)
-    }
-}
-
-
 /// A read-only storage
 public protocol Storage {
     /// Lists all entries in the storage
@@ -95,7 +26,7 @@ public protocol MutableStorage: Storage {
     ///       from the Base64Urlsafe character set (without `=`).
     ///     - data: The entry data
     ///  - Throws: If the entry cannot be written
-    mutating func write<D0: DataProtocol, D1: DataProtocol>(name: D0, data: D1) throws
+    mutating func write<N: DataProtocol, D: DataProtocol>(name: N, data: D) throws
     /// Deletes an entry if it exists
     ///
     ///  - Parameter name: The name of the entry to delete

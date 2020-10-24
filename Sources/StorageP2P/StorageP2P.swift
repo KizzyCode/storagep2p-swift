@@ -31,21 +31,25 @@ public struct Discovery {
 public class Viewer {
     /// The connection ID
     public let id: ConnectionID
-    /// The RX position within the connection
-    internal(set) public var position: BoxedValueProvider<UInt64>
+    /// The persistent connection states
+    internal var persistent: ConnectionState
     /// The storage used to exchange messages
     internal let storage: Storage
+    
+    /// The state for the current connection
+    internal var state: StateObject {
+        self.persistent[self.id] ?? StateObject()
+    }
     
     /// Creates a new connection viewer
     ///
     ///  - Parameters:
     ///     - id: The connection ID
-    ///     - position: The RX position within the connection (i.e. the amount of messages received, required to resume
-    ///                 a connection)
+    ///     - state: The persistent connection state object
     ///     - storage: The storage used to exchange messages
-    public init<T: ValueProvider>(id: ConnectionID, at position: T, storage: Storage) where T.Value == UInt64 {
+    public init(connection id: ConnectionID, state: ConnectionState, storage: Storage) {
         self.id = id
-        self.position = BoxedValueProvider(position)
+        self.persistent = state
         self.storage = storage
     }
     
@@ -59,7 +63,7 @@ public class Viewer {
     ///  - Throws: If an entry is invalid or if a local or remote I/O-error occurred
     public func peek(nth: UInt64 = 0) throws -> Data? {
         // Create the header
-        let header = MessageHeader(sender: self.id.remote, receiver: self.id.local, counter: self.position.value + nth),
+        let header = MessageHeader(sender: self.id.remote, receiver: self.id.local, counter: self.state.rx + nth),
             headerBytes = try DEREncoder().encode(header)
         
         // Read the message
@@ -76,16 +80,21 @@ public class Receiver: Viewer {
     /// The storage used to exchange messages
     internal var mutableStorage: MutableStorage
     
+    /// The state for the current connection
+    override internal var state: StateObject {
+        get { self.persistent[self.id] ?? StateObject() }
+        set { self.persistent[self.id] = newValue }
+    }
+    
     /// Creates a new connection receiver
     ///
     ///  - Parameters:
     ///     - id: The connection ID
-    ///     - position: The position within the connection (i.e. the amount of messages received, required to resume a
-    ///                 connection)
+    ///     - state: The persistent connection state object
     ///     - storage: The storage used to exchange messages
-    public init<T: ValueProvider>(id: ConnectionID, at position: T, storage: MutableStorage) where T.Value == UInt64 {
+    public init(connection id: ConnectionID, state: ConnectionState, storage: MutableStorage) {
         self.mutableStorage = storage
-        super.init(id: id, at: position, storage: storage)
+        super.init(connection: id, state: state, storage: storage)
     }
     
     /// Receives the next message if any
@@ -101,12 +110,12 @@ public class Receiver: Viewer {
     ///  - Throws: If an entry is invalid or if a local or remote I/O-error occurred
     public func receive() throws -> Data? {
         // Create the header
-        let header = MessageHeader(sender: self.id.remote, receiver: self.id.local, counter: self.position.value),
+        let header = MessageHeader(sender: self.id.remote, receiver: self.id.local, counter: self.state.rx),
             headerBytes = try DEREncoder().encode(header)
         
         // Receive the message
         let message = try self.storage.read(name: headerBytes)
-        self.position.value += 1
+        self.state.rx += 1
         
         // Perform an opportunistic garbage collection and return
         try? self.gc()
@@ -121,7 +130,7 @@ public class Receiver: Viewer {
     ///  - Throws: If an entry is invalid or if a local or remote I/O-error occurred
     public func gc() throws {
         // Capture state and delete all messages `remote -> local` where `message.counter < state.counterRX`
-        let position = self.position.value
+        let position = self.state.rx
         for headerBytes in try self.storage.list() {
             // Decode the header
             if let header = try? DERDecoder().decode(MessageHeader.self, from: headerBytes) {
@@ -139,27 +148,7 @@ public class Receiver: Viewer {
 
 
 /// A sender
-public class Sender {
-    /// The connection ID
-    public let id: ConnectionID
-    /// The TX position within the connection
-    internal(set) public var position: BoxedValueProvider<UInt64>
-    /// The storage used to exchange messages
-    internal var mutableStorage: MutableStorage
-    
-    /// Creates a new connection receiver
-    ///
-    ///  - Parameters:
-    ///     - id: The connection ID
-    ///     - position: The position within the connection (i.e. the amount of messages sent, required to resume a
-    ///                 connection)
-    ///     - storage: The storage used to exchange messages
-    public init<T: ValueProvider>(id: ConnectionID, at position: T, storage: MutableStorage) where T.Value == UInt64 {
-        self.id = id
-        self.position = BoxedValueProvider(position)
-        self.mutableStorage = storage
-    }
-    
+public class Sender: Receiver {
     /// Sends a message
     ///
     ///  - Idempotency: This function is __not__ idempotent. However __on error__ this function will not update the
@@ -170,11 +159,11 @@ public class Sender {
     ///  - Throws: If a local or remote I/O-error occurred
     public func send(message: Data) throws {
         // Create the header
-        let header = MessageHeader(sender: self.id.local, receiver: self.id.remote, counter: self.position.value),
+        let header = MessageHeader(sender: self.id.local, receiver: self.id.remote, counter: self.state.tx),
             headerBytes = try DEREncoder().encode(header)
         
         // Write the message
         try self.mutableStorage.write(name: headerBytes, data: message)
-        self.position.value += 1
+        self.state.tx += 1
     }
 }

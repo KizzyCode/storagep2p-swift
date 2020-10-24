@@ -1,5 +1,6 @@
 import Foundation
 import StorageP2P
+import ValueProvider
 
 
 /// Generates deterministic test messages
@@ -11,26 +12,40 @@ private struct Message {
 }
 
 
-/// A 64 bit counter
-public class Counter {
-    /// The counter value
-    private var value: UInt64
-    
-    /// Creates a new counter
-    ///
-    ///  - Parameter value: The initial counter value
-    public init(_ value: UInt64) {
-        self.value = value
-    }
+/// A "persistent" connection state
+public struct ConnectionState {
+    /// The states
+    private var states: [ConnectionID: StateObject] = [:]
 }
-extension Counter: ValueProvider {
-    public typealias Value = UInt64
+extension ConnectionState: MappedDictionary {
+    public typealias Key = ConnectionID
+    public typealias Value = StateObject
     
-    public func load() throws -> UInt64 {
-        self.value
+    public func list() -> Set<ConnectionID> {
+        Set(self.states.keys)
     }
-    public func store(_ newValue: UInt64) throws {
-        self.value = newValue
+    public func load() -> [ConnectionID: StateObject] {
+        self.states
+    }
+    public func load(key: ConnectionID) -> StateObject? {
+        self.states[key]
+    }
+    public mutating func load(key: ConnectionID, default: StateObject) -> StateObject {
+        if self.states[key] == nil {
+            self.states[key] = `default`
+        }
+        return self.states[key]!
+    }
+    public mutating func store(key: ConnectionID, value: StateObject?) {
+        self.states[key] = value
+    }
+    public mutating func delete() {
+        fatalError("Deletion is not supported")
+    }
+    
+    /// `self` as `AnyMappedDictionary`
+    public var asAny: AnyMappedDictionary<Key, Value> {
+        AnyMappedDictionary(self)
     }
 }
 
@@ -38,9 +53,9 @@ extension Counter: ValueProvider {
 /// A client for fuzzing
 public class Client {
     /// The `storage_p2p` ID of this client
-    public let local: UniqueID = UniqueID()
+    public let id: UniqueID = UniqueID()
     /// The peer connection IDs to fuzz together with the associated RX and TX counters
-    public var peers: [(conn: ConnectionID, rx: Counter, tx: Counter)] = []
+    public var state = ConnectionState().asAny
     
     /// Creates a new fuzzing client
     public init() {}
@@ -56,16 +71,15 @@ public class Client {
     
     /// Sends a random amount of messages to all connections
     public func send() {
-        for peer in self.peers.indices {
+        for conn in self.state.keys.filter({ $0.local == self.id }) {
             for _ in 0 ..< Int.random(in: 0 ..< 7) {
                 autoreleasepool(invoking: {
                     // Generate deterministic message
-                    let message = Message.create(sender: self.peers[peer].conn.local,
-                                                 receiver: self.peers[peer].conn.remote,
-                                                 counter: self.peers[peer].tx.value)
+                    let message = Message.create(sender: self.id, receiver: conn.remote,
+                                                 counter: self.state[conn]!.tx)
                     
                     // Send message
-                    let sender = Sender(id: self.peers[peer].conn, at: self.peers[peer].tx, storage: StorageImpl())
+                    let sender = Sender(connection: conn, state: self.state, storage: StorageImpl())
                     retry({ try sender.send(message: message) })
                 })
             }
@@ -73,17 +87,16 @@ public class Client {
     }
     /// Receives all pending messages for all connections
     public func receive() {
-        for peer in self.peers.indices {
+        for conn in self.state.keys.filter({ $0.local == self.id }) {
             autoreleasepool(invoking: {
                 // Create the receiver
-                let receiver = Receiver(id: self.peers[peer].conn, at: self.peers[peer].rx, storage: StorageImpl())
+                let receiver = Receiver(connection: conn, state: self.state, storage: StorageImpl())
                 
                 // Receive all pending messages
                 while let peeked = retry({ try receiver.peek(nth: 0) }) {
                     // Generate expected message
-                    let expected = Message.create(sender: self.peers[peer].conn.remote,
-                                                  receiver: self.peers[peer].conn.local,
-                                                  counter: self.peers[peer].rx.value)
+                    let expected = Message.create(sender: conn.remote, receiver: self.id,
+                                                  counter: self.state[conn]!.rx)
                     
                     // Validate the peeked message
                     assert(peeked == expected, "Unexpected message: expected ",

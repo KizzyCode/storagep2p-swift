@@ -66,13 +66,13 @@ public func stdout(_ string: StaticString) {
 func fuzz() {
     // Create connections and collect all IDs
     let clients = (0 ..< Config.threadCount).map({ _ in Client() })
-    let ids = clients.map({ $0.local })
+    let ids = clients.map({ $0.id })
 
     // Set peers
     clients.forEach({ client in
-        ids.filter({ $0 != client.local })
-            .map({ ConnectionID(local: client.local, remote: $0) })
-            .forEach({ client.peers.append((conn: $0, rx: Counter(0), tx: Counter(0))) })
+        ids.filter({ $0 != client.id })
+            .map({ ConnectionID(local: client.id, remote: $0) })
+            .forEach({ client.state[$0] = StateObject() })
     })
 
     // Start fuzzing

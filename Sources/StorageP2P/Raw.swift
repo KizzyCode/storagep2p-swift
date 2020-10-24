@@ -1,5 +1,10 @@
 import Foundation
 import Asn1Der
+import ValueProvider
+
+
+/// A persistent connection state object
+public typealias ConnectionState = AnyMappedDictionary<ConnectionID, StateObject>
 
 
 /// A unique ID
@@ -66,18 +71,18 @@ public struct ConnectionID: Hashable, Codable {
 /// A state object
 public struct StateObject: Codable {
     /// The amount of messages received `remote->local`
-    internal(set) public var counterRX: UInt64
+    internal(set) public var rx: UInt64
     /// The amount of messages sent `local->remote`
-    internal(set) public var counterTX: UInt64
+    internal(set) public var tx: UInt64
     
     /// Creates a new connection ID
     ///
     ///  - Parameters:
-    ///     - counterTX: The initial send counter value
-    ///     - counterRX: The initial receive counter value
-    internal init(counterTX: UInt64 = 0, counterRX: UInt64 = 0) {
-        self.counterRX = counterRX
-        self.counterTX = counterTX
+    ///     - rx: The initial receive counter value
+    ///     - tx: The initial send counter value
+    public init(rx: UInt64 = 0, tx: UInt64 = 0) {
+        self.rx = rx
+        self.tx = tx
     }
 }
 
