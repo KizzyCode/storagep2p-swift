@@ -19,11 +19,11 @@ public struct Discovery {
     ///
     ///  - Parameter local: The ID of the local endpoint
     ///  - Returns: All connections that have pending messages `* -> local`
-    public func scan(local: UniqueID) throws -> [ConnectionID] {
+    public func scan(local: UniqueID) throws -> Set<ConnectionID> {
         try self.storage.list()
             .compactMap({ try? DERDecoder().decode(MessageHeader.self, from: $0) })
             .filter({ $0.receiver == local })
-            .map({ ConnectionID(local: $0.receiver, remote: $0.sender) })
+            .reduce(into: Set(), { $0.insert(ConnectionID(local: $1.receiver, remote: $1.sender)) })
     }
 }
 
