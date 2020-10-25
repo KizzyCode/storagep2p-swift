@@ -1,5 +1,6 @@
 import Foundation
 import Asn1Der
+import ValueProvider
 
 
 /// Scans a storage to discovery pending connections
@@ -32,13 +33,13 @@ public class ConnectionViewer {
     /// The connection ID
     public let id: ConnectionID
     /// The persistent connection states
-    internal var persistent: ConnectionState
+    internal var persistent: AnyMappedDictionary<ConnectionID, ConnectionState>
     /// The storage used to exchange messages
     internal let storage: Storage
     
     /// The state for the current connection
-    public var state: StateObject {
-        self.persistent[self.id] ?? StateObject()
+    public var state: ConnectionState {
+        self.persistent[self.id] ?? ConnectionState()
     }
     
     /// Creates a new connection viewer
@@ -47,9 +48,11 @@ public class ConnectionViewer {
     ///     - id: The connection ID
     ///     - state: The persistent connection state object
     ///     - storage: The storage used to exchange messages
-    public init(id: ConnectionID, state: ConnectionState, storage: Storage) {
+    public init<S: MappedDictionary>(id: ConnectionID, state: S, storage: Storage)
+        where S.Key == ConnectionID, S.Value == ConnectionState
+    {
         self.id = id
-        self.persistent = state
+        self.persistent = AnyMappedDictionary(state)
         self.storage = storage
     }
     
@@ -81,8 +84,8 @@ public class Connection: ConnectionViewer {
     internal var mutableStorage: MutableStorage
     
     /// The state for the current connection
-    override internal(set) public var state: StateObject {
-        get { self.persistent[self.id] ?? StateObject() }
+    override internal(set) public var state: ConnectionState {
+        get { self.persistent[self.id] ?? ConnectionState() }
         set { self.persistent[self.id] = newValue }
     }
     
@@ -105,7 +108,9 @@ public class Connection: ConnectionViewer {
     ///     - id: The connection ID
     ///     - state: The persistent connection state object
     ///     - storage: The storage used to exchange messages
-    public init(id: ConnectionID, state: ConnectionState, storage: MutableStorage) {
+    public init<S: MappedDictionary>(id: ConnectionID, state: S, storage: MutableStorage)
+        where S.Key == ConnectionID, S.Value == ConnectionState
+    {
         self.mutableStorage = storage
         super.init(id: id, state: state, storage: storage)
     }

@@ -13,39 +13,34 @@ private struct Message {
 
 
 /// A "persistent" connection state
-public struct ConnectionState {
+public struct ConnectionStateImpl {
     /// The states
-    private var states: [ConnectionID: StateObject] = [:]
+    private var states: [ConnectionID: ConnectionState] = [:]
 }
-extension ConnectionState: MappedDictionary {
+extension ConnectionStateImpl: MappedDictionary {
     public typealias Key = ConnectionID
-    public typealias Value = StateObject
+    public typealias Value = ConnectionState
     
     public func list() -> Set<ConnectionID> {
         Set(self.states.keys)
     }
-    public func load() -> [ConnectionID: StateObject] {
+    public func load() -> [ConnectionID: ConnectionState] {
         self.states
     }
-    public func load(key: ConnectionID) -> StateObject? {
+    public func load(key: ConnectionID) -> ConnectionState? {
         self.states[key]
     }
-    public mutating func load(key: ConnectionID, default: StateObject) -> StateObject {
+    public mutating func load(key: ConnectionID, default: ConnectionState) -> ConnectionState {
         if self.states[key] == nil {
             self.states[key] = `default`
         }
         return self.states[key]!
     }
-    public mutating func store(key: ConnectionID, value: StateObject?) {
+    public mutating func store(key: ConnectionID, value: ConnectionState?) {
         self.states[key] = value
     }
     public mutating func delete() {
         fatalError("Deletion is not supported")
-    }
-    
-    /// `self` as `AnyMappedDictionary`
-    public var asAny: AnyMappedDictionary<Key, Value> {
-        AnyMappedDictionary(self)
     }
 }
 
@@ -55,7 +50,7 @@ public class Client {
     /// The `storage_p2p` ID of this client
     public let id: UniqueID = UniqueID()
     /// The peer connection IDs to fuzz together with the associated RX and TX counters
-    public var state = ConnectionState().asAny
+    public var state = ConnectionStateImpl()
     
     /// Creates a new fuzzing client
     public init() {}

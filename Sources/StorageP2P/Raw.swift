@@ -1,10 +1,5 @@
 import Foundation
 import Asn1Der
-import ValueProvider
-
-
-/// A persistent connection state object
-public typealias ConnectionState = AnyMappedDictionary<ConnectionID, StateObject>
 
 
 /// A unique ID
@@ -69,7 +64,7 @@ public struct ConnectionID: Hashable, Codable {
 
 
 /// A state object
-public struct StateObject: Codable {
+public struct ConnectionState: Codable {
     /// The amount of messages received `remote->local`
     internal(set) public var rx: UInt64
     /// The amount of messages sent `local->remote`

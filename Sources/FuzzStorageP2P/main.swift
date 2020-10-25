@@ -72,7 +72,7 @@ func fuzz() {
     clients.forEach({ client in
         ids.filter({ $0 != client.id })
             .map({ ConnectionID(local: client.id, remote: $0) })
-            .forEach({ client.state[$0] = StateObject() })
+            .forEach({ client.state[$0] = ConnectionState() })
     })
 
     // Start fuzzing
