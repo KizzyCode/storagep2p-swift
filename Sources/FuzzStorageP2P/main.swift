@@ -11,11 +11,11 @@ public struct Config {
     /// The retry interval in milliseconds
     static let retryIntervalMS = 37
     /// The amount of client threads to spawn
-    static let threadCount = 7
+    static let threadCount = 23
     /// The fuzz iterations per thread until a validation is performed
-    static let fuzzIterations = 67
+    static let fuzzIterations = 167
     /// The amount of fuzzing rounds (i.e. the amount of `fuzzIterations * threadCount -> finish -> verify` rounds)
-    static let fuzzRounds = 3
+    static let fuzzRounds = 4
 }
 
 
@@ -35,7 +35,7 @@ public func retry<R>(_ block: () throws -> R) -> R {
         do {
             return try block()
         } catch {
-            // Continue
+            usleep(UInt32(Config.retryIntervalMS) * 1000)
         }
     }
 }
@@ -60,6 +60,14 @@ public func stdout(_ string: StaticString) {
     fwrite(string.utf8Start, 1, string.utf8CodeUnitCount, stdout)
     fflush(stdout)
 }
+/// Prints to `stdout` without newline and flushes afterwards
+@inline(__always)
+public func stdout(string: String) {
+    string.bytes.withUnsafeBytes({
+        fwrite($0.baseAddress!, 1, $0.count, stdout)
+        fflush(stdout)
+    })
+}
 
 
 /// Performs the fuzzing
@@ -76,7 +84,10 @@ func fuzz() {
     })
 
     // Start fuzzing
-    for _ in 0 ..< Config.fuzzRounds {
+    for i in 1 ... Config.fuzzRounds {
+        // Print the iteration information
+        stdout(string: "\(i) of \(Config.fuzzRounds): ")
+        
         // Start all fuzzing threads
         let threads: [Thread<()>] = clients.map({ client in
             defer { stdout("+") }

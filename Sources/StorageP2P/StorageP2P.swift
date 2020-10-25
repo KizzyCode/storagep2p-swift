@@ -132,12 +132,12 @@ public class Connection: ConnectionViewer {
     
     /// Receives the next message if any
     ///
-    ///  - Info: This function performs an opportunistic garbage after receiving; however errors are silently ignored.
-    ///    If you want to ensure that a garbage collection is performed, call `gc` manually.
-    ///
     ///  - Idempotency: This function is __not__ idempotent. However __on error__ this function will not update the
     ///    connection state so that it can be simply called again until it succeeds (i.e. this function provides some
     ///    sort of "idempotency on error").
+    ///
+    ///  - Warning: Due to performance reasons, this function does not perform any kind of garbage collection. To remove
+    ///    the received messages from the storage, call the `gc()`-function manually.
     ///
     ///  - Returns: The received message if any
     ///  - Throws: If an entry is invalid or if a local or remote I/O-error occurred
@@ -146,9 +146,6 @@ public class Connection: ConnectionViewer {
         let headerBytes = try DEREncoder().encode(self.nextHeader.rx),
             message = try self.storage.read(name: headerBytes)
         self.state.rx += 1
-        
-        // Perform an opportunistic garbage collection and return
-        try? self.gc()
         return message
     }
     
