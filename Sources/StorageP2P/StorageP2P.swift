@@ -28,7 +28,7 @@ public struct Discovery {
 
 
 /// A read-only connection viewer
-public class Viewer {
+public class ConnectionViewer {
     /// The connection ID
     public let id: ConnectionID
     /// The persistent connection states
@@ -37,7 +37,7 @@ public class Viewer {
     internal let storage: Storage
     
     /// The state for the current connection
-    internal var state: StateObject {
+    public var state: StateObject {
         self.persistent[self.id] ?? StateObject()
     }
     
@@ -47,7 +47,7 @@ public class Viewer {
     ///     - id: The connection ID
     ///     - state: The persistent connection state object
     ///     - storage: The storage used to exchange messages
-    public init(connection id: ConnectionID, state: ConnectionState, storage: Storage) {
+    public init(id: ConnectionID, state: ConnectionState, storage: Storage) {
         self.id = id
         self.persistent = state
         self.storage = storage
@@ -75,15 +75,28 @@ public class Viewer {
 }
 
 
-/// A connection reader
-public class Receiver: Viewer {
+/// A connection
+public class Connection: ConnectionViewer {
     /// The storage used to exchange messages
     internal var mutableStorage: MutableStorage
     
     /// The state for the current connection
-    override internal var state: StateObject {
+    override internal(set) public var state: StateObject {
         get { self.persistent[self.id] ?? StateObject() }
         set { self.persistent[self.id] = newValue }
+    }
+    
+    /// Gets the headers of the next incoming and outgoing messages
+    ///
+    ///  - Returns: The header of the next incoming message (`rx`) and the header of the next outgoing message (`tx`)
+    ///
+    ///  - Discussion: Each message has a header which is unique within a `StorageP2P` environment. This is not only
+    ///    required for message delivery but can also be used to perform some message specific operations, e.g. deriving
+    ///    per-message subkeys for encryption.
+    public var nextHeader: (rx: MessageHeader, tx: MessageHeader) {
+        return (
+            rx: MessageHeader(sender: self.id.remote, receiver: self.id.local, counter: self.state.rx),
+            tx: MessageHeader(sender: self.id.local, receiver: self.id.remote, counter: self.state.tx))
     }
     
     /// Creates a new connection receiver
@@ -92,9 +105,24 @@ public class Receiver: Viewer {
     ///     - id: The connection ID
     ///     - state: The persistent connection state object
     ///     - storage: The storage used to exchange messages
-    public init(connection id: ConnectionID, state: ConnectionState, storage: MutableStorage) {
+    public init(id: ConnectionID, state: ConnectionState, storage: MutableStorage) {
         self.mutableStorage = storage
-        super.init(connection: id, state: state, storage: storage)
+        super.init(id: id, state: state, storage: storage)
+    }
+    
+    /// Sends a message
+    ///
+    ///  - Idempotency: This function is __not__ idempotent. However __on error__ this function will not update the
+    ///    connection state so that it can be simply called again until it succeeds (i.e. this function provides some
+    ///    sort of "idempotency on error").
+    ///
+    ///  - Parameter message: The message to send
+    ///  - Throws: If a local or remote I/O-error occurred
+    public func send(message: Data) throws {
+        // Write the message
+        let headerBytes = try DEREncoder().encode(self.nextHeader.tx)
+        try self.mutableStorage.write(name: headerBytes, data: message)
+        self.state.tx += 1
     }
     
     /// Receives the next message if any
@@ -103,18 +131,15 @@ public class Receiver: Viewer {
     ///    If you want to ensure that a garbage collection is performed, call `gc` manually.
     ///
     ///  - Idempotency: This function is __not__ idempotent. However __on error__ this function will not update the
-    ///    connection position so that it can be simply called again until it succeeds (i.e. this function provides some
+    ///    connection state so that it can be simply called again until it succeeds (i.e. this function provides some
     ///    sort of "idempotency on error").
     ///
     ///  - Returns: The received message if any
     ///  - Throws: If an entry is invalid or if a local or remote I/O-error occurred
     public func receive() throws -> Data? {
-        // Create the header
-        let header = MessageHeader(sender: self.id.remote, receiver: self.id.local, counter: self.state.rx),
-            headerBytes = try DEREncoder().encode(header)
-        
         // Receive the message
-        let message = try self.storage.read(name: headerBytes)
+        let headerBytes = try DEREncoder().encode(self.nextHeader.rx),
+            message = try self.storage.read(name: headerBytes)
         self.state.rx += 1
         
         // Perform an opportunistic garbage collection and return
@@ -143,27 +168,5 @@ public class Receiver: Viewer {
                 }
             }
         }
-    }
-}
-
-
-/// A sender
-public class Sender: Receiver {
-    /// Sends a message
-    ///
-    ///  - Idempotency: This function is __not__ idempotent. However __on error__ this function will not update the
-    ///    connection state so that it can be simply called again until it succeeds (i.e. this function provides some
-    ///    sort of "idempotency on error").
-    ///
-    ///  - Parameter message: The message to send
-    ///  - Throws: If a local or remote I/O-error occurred
-    public func send(message: Data) throws {
-        // Create the header
-        let header = MessageHeader(sender: self.id.local, receiver: self.id.remote, counter: self.state.tx),
-            headerBytes = try DEREncoder().encode(header)
-        
-        // Write the message
-        try self.mutableStorage.write(name: headerBytes, data: message)
-        self.state.tx += 1
     }
 }

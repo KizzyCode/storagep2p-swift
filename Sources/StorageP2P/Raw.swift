@@ -88,7 +88,9 @@ public struct StateObject: Codable {
 
 
 /// A message header
-internal struct MessageHeader: Codable {
+///
+///  - Discussion: A message header uniquely identifies a message within a StorageP2P environment
+public struct MessageHeader: Codable {
     /// The message sender
     public let sender: UniqueID
     /// The message receiver

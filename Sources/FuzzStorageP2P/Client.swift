@@ -71,46 +71,46 @@ public class Client {
     
     /// Sends a random amount of messages to all connections
     public func send() {
-        for conn in self.state.keys.filter({ $0.local == self.id }) {
+        for connectionID in self.state.keys.filter({ $0.local == self.id }) {
             for _ in 0 ..< Int.random(in: 0 ..< 7) {
                 autoreleasepool(invoking: {
                     // Generate deterministic message
-                    let message = Message.create(sender: self.id, receiver: conn.remote,
-                                                 counter: self.state[conn]!.tx)
+                    let message = Message.create(sender: self.id, receiver: connectionID.remote,
+                                                 counter: self.state[connectionID]!.tx)
                     
                     // Send message
-                    let sender = Sender(connection: conn, state: self.state, storage: StorageImpl())
-                    retry({ try sender.send(message: message) })
+                    let connection = Connection(id: connectionID, state: self.state, storage: StorageImpl())
+                    retry({ try connection.send(message: message) })
                 })
             }
         }
     }
     /// Receives all pending messages for all connections
     public func receive() {
-        for conn in self.state.keys.filter({ $0.local == self.id }) {
+        for connectionID in self.state.keys.filter({ $0.local == self.id }) {
             autoreleasepool(invoking: {
                 // Create the receiver
-                let receiver = Receiver(connection: conn, state: self.state, storage: StorageImpl())
+                let connection = Connection(id: connectionID, state: self.state, storage: StorageImpl())
                 
                 // Receive all pending messages
-                while let peeked = retry({ try receiver.peek(nth: 0) }) {
+                while let peeked = retry({ try connection.peek(nth: 0) }) {
                     // Generate expected message
-                    let expected = Message.create(sender: conn.remote, receiver: self.id,
-                                                  counter: self.state[conn]!.rx)
+                    let expected = Message.create(sender: connectionID.remote, receiver: self.id,
+                                                  counter: self.state[connectionID]!.rx)
                     
                     // Validate the peeked message
                     assert(peeked == expected, "Unexpected message: expected ",
                            String(data: expected, encoding: .utf8)!, ", got: ", String(data: peeked, encoding: .utf8)!)
                     
                     // Receive and validate message
-                    let received = retry({ try receiver.receive() })
+                    let received = retry({ try connection.receive() })
                     assert(received == expected, "Unexpected message: expected ",
                            String(data: expected, encoding: .utf8)!, ", got: ",
                            String(data: received ?? Data([0x6E, 0x69, 0x6C]), encoding: .utf8)!)
                 }
                 
                 // Perform a garbage collection
-                retry({ try receiver.gc() })
+                retry({ try connection.gc() })
             })
         }
     }
