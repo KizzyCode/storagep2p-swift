@@ -174,7 +174,6 @@ public class Connection: ConnectionViewer {
     ///
     ///  - Idempotency: This function is idempotent.
     ///
-    ///  - Parameter conn: The connection to clean up
     ///  - Throws: If an entry is invalid or if a local or remote I/O-error occurred
     public func gc() throws {
         // Capture state and delete all messages `remote -> local` where `message.counter < state.counterRX`
