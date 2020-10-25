@@ -56,7 +56,28 @@ public class ConnectionViewer {
         self.storage = storage
     }
     
-    /// Takes a peek at the `nth` pending message
+    /// Gets the amount of pending messages
+    ///
+    ///  - Returns: The amount of pending messages
+    public func pending() throws -> UInt64 {
+        // List and index all message headers
+        let headers = try Set(self.storage.list()),
+            counter = self.state.rx
+        
+        // Scan for pending messages
+        for nth in counter ... UInt64.max {
+            // Create the header
+            let header = MessageHeader(sender: self.id.remote, receiver: self.id.local, counter: nth),
+                headerBytes = try DEREncoder().encode(header)
+            
+            // Check whether the message exists
+            guard headers.contains(headerBytes) else {
+                return nth
+            }
+        }
+        fatalError("Unreachable: There cannot be more than `UInt64.max` pending messages")
+    }
+    /// Takes a peek at the `nth` pending message if it exists
     ///
     ///  - Idempotency: This function is read-only and does not modify any state.
     ///
