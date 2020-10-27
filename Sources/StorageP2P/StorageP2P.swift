@@ -151,7 +151,29 @@ public class Connection: ConnectionViewer {
         self.state.tx += 1
     }
     
-    /// Receives the next message if any
+    /// Receives the next message, passes it to `block` and updates the state *if* `block` *succeeds*
+    ///
+    ///  - Idempotency: This function is __not__ idempotent. However __on error__ (e.g. an I/O-error or if `block`
+    ///    throws) this function will not update the connection state so that it can be simply called again until it
+    ///    succeeds (i.e. this function provides some sort of "idempotency on error").
+    ///
+    ///  - Warning: Due to performance reasons, this function does not perform any kind of garbage collection. To remove
+    ///    the received messages from the storage, call the `gc()`-function manually.
+    ///
+    ///  - Parameter block: A block that processes the incoming message
+    ///  - Returns: The result of `block`
+    ///  - Throws: If an entry is invalid or if a local or remote I/O-error occurred
+    public func receive<R>(_ block: (Data) throws -> R) throws -> R {
+        // Read the message
+        let headerBytes = try DEREncoder().encode(self.nextHeader.rx),
+            message = try self.storage.read(name: headerBytes)
+        
+        // Call block and update the state on success
+        let result = try block(message)
+        self.state.rx += 1
+        return result
+    }
+    /// Receives the next message
     ///
     ///  - Idempotency: This function is __not__ idempotent. However __on error__ this function will not update the
     ///    connection state so that it can be simply called again until it succeeds (i.e. this function provides some
@@ -160,14 +182,10 @@ public class Connection: ConnectionViewer {
     ///  - Warning: Due to performance reasons, this function does not perform any kind of garbage collection. To remove
     ///    the received messages from the storage, call the `gc()`-function manually.
     ///
-    ///  - Returns: The received message if any
+    ///  - Returns: The received message
     ///  - Throws: If an entry is invalid or if a local or remote I/O-error occurred
-    public func receive() throws -> Data? {
-        // Receive the message
-        let headerBytes = try DEREncoder().encode(self.nextHeader.rx),
-            message = try self.storage.read(name: headerBytes)
-        self.state.rx += 1
-        return message
+    public func receive() throws -> Data {
+        try self.receive({ $0 })
     }
     
     /// Removes all already received messages from the storage
