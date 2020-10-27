@@ -101,7 +101,7 @@ public class Client {
                     let received = retry({ try connection.receive() })
                     assert(received == expected, "Unexpected message: expected ",
                            String(data: expected, encoding: .utf8)!, ", got: ",
-                           String(data: received ?? Data([0x6E, 0x69, 0x6C]), encoding: .utf8)!)
+                           String(data: received, encoding: .utf8)!)
                 }
                 
                 // Perform a garbage collection

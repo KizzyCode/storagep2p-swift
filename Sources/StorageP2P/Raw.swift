@@ -6,6 +6,10 @@ import Asn1Der
 public struct UniqueID: Hashable, Codable {
     /// The ID bytes
     public let bytes: Data
+    /// The ID bytes as hex encoded string
+    private(set) public lazy var hex: String = {
+        self.bytes.reduce("", { $0 + String(format: "%02x", $1) })
+    }()
     
     /// Creates a new cryptographically secure 24 byte random ID
     public init() {
