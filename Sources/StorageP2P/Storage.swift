@@ -33,3 +33,29 @@ public protocol MutableStorage: Storage {
     ///  - Throws: If the entry exists but cannot be deleted (it is *not* an error if the entry does not exist)
     mutating func delete<D: DataProtocol>(name: D) throws
 }
+
+
+/// A persistent storage provider for connection states
+public protocol ConnectionStates {
+    /// Lists all connections for which a state is stored
+    ///
+    ///  - Returns: The IDs of all connection for which a state is stored
+    func list() throws -> Set<ConnectionID>
+    
+    /// Loads a connection state object if any
+    ///
+    ///  - Parameter connection: The ID of the connection
+    ///  - Returns: The stored connection state object
+    func load(connection: ConnectionID) throws -> ConnectionStateObject
+}
+
+
+/// A mutable persistent storage provider for connection states
+public protocol MutableConnectionStates: ConnectionStates {
+    /// Stores a new connection state object
+    ///
+    ///  - Parameters:
+    ///     - connection: The ID of the connection
+    ///     - state: The new state object or `nil` to delete the state object
+    mutating func store(connection: ConnectionID, state: ConnectionStateObject?) throws
+}

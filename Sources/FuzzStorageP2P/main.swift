@@ -63,7 +63,7 @@ public func stdout(_ string: StaticString) {
 /// Prints to `stdout` without newline and flushes afterwards
 @inline(__always)
 public func stdout(string: String) {
-    string.bytes.withUnsafeBytes({
+    string.data(using: .utf8)!.withUnsafeBytes({
         fwrite($0.baseAddress!, 1, $0.count, stdout)
         fflush(stdout)
     })
@@ -80,7 +80,7 @@ func fuzz() {
     clients.forEach({ client in
         ids.filter({ $0 != client.id })
             .map({ ConnectionID(local: client.id, remote: $0) })
-            .forEach({ client.state[$0] = ConnectionState() })
+            .forEach({ client.state.store(connection: $0, state: ConnectionStateObject()) })
     })
 
     // Start fuzzing

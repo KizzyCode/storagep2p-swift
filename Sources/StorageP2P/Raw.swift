@@ -7,9 +7,9 @@ public struct UniqueID: Hashable, Codable {
     /// The ID bytes
     public let bytes: Data
     /// The ID bytes as hex encoded string
-    private(set) public lazy var hex: String = {
+    public var hex: String {
         self.bytes.reduce("", { $0 + String(format: "%02x", $1) })
-    }()
+    }
     
     /// Creates a new cryptographically secure 24 byte random ID
     public init() {
@@ -67,8 +67,8 @@ public struct ConnectionID: Hashable, Codable {
 }
 
 
-/// A state object
-public struct ConnectionState: Codable {
+/// A connection state object
+public struct ConnectionStateObject: Codable {
     /// The amount of messages received `remote->local`
     internal(set) public var rx: UInt64
     /// The amount of messages sent `local->remote`
@@ -82,6 +82,12 @@ public struct ConnectionState: Codable {
     public init(rx: UInt64 = 0, tx: UInt64 = 0) {
         self.rx = rx
         self.tx = tx
+    }
+}
+public extension ConnectionStateObject {
+    /// Returns a new default connection state object
+    static var `default`: ConnectionStateObject {
+        ConnectionStateObject()
     }
 }
 

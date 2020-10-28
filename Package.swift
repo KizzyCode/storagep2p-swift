@@ -15,18 +15,15 @@ let package = Package(
     dependencies: [
         .package(
             url: "https://github.com/KizzyCode/asn1der-swift",
-            .branch("master")),
-        .package(
-            url: "https://github.com/KizzyCode/valueprovider-swift",
             .branch("master"))
     ],
     targets: [
         .target(
             name: "StorageP2P",
-            dependencies: ["Asn1Der", "ValueProvider"]),
+            dependencies: ["Asn1Der"]),
         .target(
             name: "FuzzStorageP2P",
-            dependencies: ["StorageP2P", "ValueProvider"]),
+            dependencies: ["StorageP2P"]),
         .testTarget(
             name: "StorageP2PTests",
             dependencies: ["StorageP2P"])

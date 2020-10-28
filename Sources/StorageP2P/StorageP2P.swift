@@ -1,6 +1,5 @@
 import Foundation
 import Asn1Der
-import ValueProvider
 
 
 /// Scans a storage to discovery pending connections
@@ -33,26 +32,24 @@ public class ConnectionViewer {
     /// The connection ID
     public let id: ConnectionID
     /// The persistent connection states
-    internal var persistent: AnyMappedDictionary<ConnectionID, ConnectionState>
+    internal let states: ConnectionStates
     /// The storage used to exchange messages
     internal let storage: Storage
     
-    /// The state for the current connection
-    public var state: ConnectionState {
-        self.persistent[self.id] ?? ConnectionState()
+    /// The counter values
+    internal var state: ConnectionStateObject {
+        try! self.states.load(connection: self.id)
     }
     
     /// Creates a new connection viewer
     ///
     ///  - Parameters:
     ///     - id: The connection ID
-    ///     - state: The persistent connection state object
+    ///     - states: The persistent connection state object
     ///     - storage: The storage used to exchange messages
-    public init<S: MappedDictionary>(id: ConnectionID, state: S, storage: Storage)
-        where S.Key == ConnectionID, S.Value == ConnectionState
-    {
+    public init(id: ConnectionID, states: ConnectionStates, storage: Storage) {
         self.id = id
-        self.persistent = AnyMappedDictionary(state)
+        self.states = states
         self.storage = storage
     }
     
@@ -101,13 +98,15 @@ public class ConnectionViewer {
 
 /// A connection
 public class Connection: ConnectionViewer {
+    /// The mutable persistent connection states
+    internal var mutableStates: MutableConnectionStates
     /// The storage used to exchange messages
     internal var mutableStorage: MutableStorage
     
     /// The state for the current connection
-    override internal(set) public var state: ConnectionState {
-        get { self.persistent[self.id] ?? ConnectionState() }
-        set { self.persistent[self.id] = newValue }
+    override internal(set) public var state: ConnectionStateObject {
+        get { try! self.mutableStates.load(connection: self.id) }
+        set { try! self.mutableStates.store(connection: self.id, state: newValue) }
     }
     
     /// Gets the headers of the next incoming and outgoing messages
@@ -127,13 +126,12 @@ public class Connection: ConnectionViewer {
     ///
     ///  - Parameters:
     ///     - id: The connection ID
-    ///     - state: The persistent connection state object
+    ///     - states: The persistent connection state object
     ///     - storage: The storage used to exchange messages
-    public init<S: MappedDictionary>(id: ConnectionID, state: S, storage: MutableStorage)
-        where S.Key == ConnectionID, S.Value == ConnectionState
-    {
+    public init(id: ConnectionID, states: MutableConnectionStates, storage: MutableStorage) {
+        self.mutableStates = states
         self.mutableStorage = storage
-        super.init(id: id, state: state, storage: storage)
+        super.init(id: id, states: states, storage: storage)
     }
     
     /// Sends a message
