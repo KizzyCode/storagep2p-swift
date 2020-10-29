@@ -12,11 +12,11 @@ private struct Message {
 
 
 /// A "persistent" connection state
-public struct ConnectionStatesImpl {
+public struct ConnectionDBImpl {
     /// The states
     private var states: [ConnectionID: ConnectionStateObject] = [:]
 }
-extension ConnectionStatesImpl: MutableConnectionStates {
+extension ConnectionDBImpl: StateDatabase {
     public func list() -> Set<ConnectionID> {
         Set(self.states.keys)
     }
@@ -37,7 +37,7 @@ public class Client {
     /// The `storage_p2p` ID of this client
     public let id: UniqueID = UniqueID()
     /// The peer connection IDs to fuzz together with the associated RX and TX counters
-    public var state = ConnectionStatesImpl()
+    public var db = ConnectionDBImpl()
     
     /// Creates a new fuzzing client
     public init() {}
@@ -53,15 +53,15 @@ public class Client {
     
     /// Sends a random amount of messages to all connections
     public func send() {
-        for connectionID in self.state.list().filter({ $0.local == self.id }) {
+        for connectionID in self.db.list().filter({ $0.local == self.id }) {
             for _ in 0 ..< Int.random(in: 0 ..< 7) {
                 autoreleasepool(invoking: {
                     // Generate deterministic message
                     let message = Message.create(sender: self.id, receiver: connectionID.remote,
-                                                 counter: self.state.load(connection: connectionID).tx)
+                                                 counter: self.db.load(connection: connectionID).tx)
                     
                     // Send message
-                    let connection = Connection(id: connectionID, states: self.state, storage: StorageImpl())
+                    let connection = Connection(id: connectionID, db: self.db, storage: StorageImpl())
                     retry({ try connection.send(message: message) })
                 })
             }
@@ -69,16 +69,16 @@ public class Client {
     }
     /// Receives all pending messages for all connections
     public func receive() {
-        for connectionID in self.state.list().filter({ $0.local == self.id }) {
+        for connectionID in self.db.list().filter({ $0.local == self.id }) {
             autoreleasepool(invoking: {
                 // Create the receiver
-                let connection = Connection(id: connectionID, states: self.state, storage: StorageImpl())
+                let connection = Connection(id: connectionID, db: self.db, storage: StorageImpl())
                 
                 // Receive all pending messages
                 while let peeked = retry({ try connection.peek(nth: 0) }) {
                     // Generate expected message
                     let expected = Message.create(sender: connectionID.remote, receiver: self.id,
-                                                  counter: self.state.load(connection: connectionID).rx)
+                                                  counter: self.db.load(connection: connectionID).rx)
                     
                     // Validate the peeked message
                     assert(peeked == expected, "Unexpected message: expected ",

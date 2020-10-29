@@ -80,7 +80,7 @@ func fuzz() {
     clients.forEach({ client in
         ids.filter({ $0 != client.id })
             .map({ ConnectionID(local: client.id, remote: $0) })
-            .forEach({ client.state.store(connection: $0, state: ConnectionStateObject()) })
+            .forEach({ client.db.store(connection: $0, state: ConnectionStateObject()) })
     })
 
     // Start fuzzing

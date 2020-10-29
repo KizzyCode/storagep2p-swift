@@ -32,24 +32,24 @@ public class ConnectionViewer {
     /// The connection ID
     public let id: ConnectionID
     /// The persistent connection states
-    internal let states: ConnectionStates
+    internal let db: StateDatabase
     /// The storage used to exchange messages
     internal let storage: Storage
     
     /// The counter values
     internal var state: ConnectionStateObject {
-        try! self.states.load(connection: self.id)
+        try! self.db.load(connection: self.id)
     }
     
     /// Creates a new connection viewer
     ///
     ///  - Parameters:
     ///     - id: The connection ID
-    ///     - states: The persistent connection state object
+    ///     - db: The persistent connection state database
     ///     - storage: The storage used to exchange messages
-    public init(id: ConnectionID, states: ConnectionStates, storage: Storage) {
+    public init(id: ConnectionID, db: StateDatabase, storage: Storage) {
         self.id = id
-        self.states = states
+        self.db = db
         self.storage = storage
     }
     
@@ -99,14 +99,14 @@ public class ConnectionViewer {
 /// A connection
 public class Connection: ConnectionViewer {
     /// The mutable persistent connection states
-    internal var mutableStates: MutableConnectionStates
+    internal var mutableDB: StateDatabase
     /// The storage used to exchange messages
     internal var mutableStorage: MutableStorage
     
     /// The state for the current connection
     override internal(set) public var state: ConnectionStateObject {
-        get { try! self.mutableStates.load(connection: self.id) }
-        set { try! self.mutableStates.store(connection: self.id, state: newValue) }
+        get { try! self.mutableDB.load(connection: self.id) }
+        set { try! self.mutableDB.store(connection: self.id, state: newValue) }
     }
     
     /// Gets the headers of the next incoming and outgoing messages
@@ -126,12 +126,12 @@ public class Connection: ConnectionViewer {
     ///
     ///  - Parameters:
     ///     - id: The connection ID
-    ///     - states: The persistent connection state object
+    ///     - db: The persistent connection state object
     ///     - storage: The storage used to exchange messages
-    public init(id: ConnectionID, states: MutableConnectionStates, storage: MutableStorage) {
-        self.mutableStates = states
+    public init(id: ConnectionID, db: StateDatabase, storage: MutableStorage) {
+        self.mutableDB = db
         self.mutableStorage = storage
-        super.init(id: id, states: states, storage: storage)
+        super.init(id: id, db: db, storage: storage)
     }
     
     /// Sends a message

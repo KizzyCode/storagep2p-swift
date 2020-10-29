@@ -36,22 +36,16 @@ public protocol MutableStorage: Storage {
 
 
 /// A persistent storage provider for connection states
-public protocol ConnectionStates {
+public protocol StateDatabase {
     /// Lists all connections for which a state is stored
     ///
     ///  - Returns: The IDs of all connection for which a state is stored
     func list() throws -> Set<ConnectionID>
-    
     /// Loads a connection state object if any
     ///
     ///  - Parameter connection: The ID of the connection
     ///  - Returns: The stored connection state object
     func load(connection: ConnectionID) throws -> ConnectionStateObject
-}
-
-
-/// A mutable persistent storage provider for connection states
-public protocol MutableConnectionStates: ConnectionStates {
     /// Stores a new connection state object
     ///
     ///  - Parameters:
